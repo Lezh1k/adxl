@@ -285,6 +285,5 @@ void Reset_Handler(void) {
   Default Handler for Exceptions / Interrupts
  *----------------------------------------------------------------------------*/
 void Default_Handler(void) {
-
   while(1);
 }

@@ -1,6 +1,4 @@
 #include <stdint.h>
-#include <stdlib.h>
-#include "ARMCM0plus.h"
 #include "lpc824.h"
 
 //typedef struct {
@@ -68,3 +66,7 @@ SystemCoreClockUpdate (void) {
 
 }
 //////////////////////////////////////////////////////////////////////////
+
+void _start() {
+  main();
+}

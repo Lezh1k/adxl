@@ -7,9 +7,10 @@ OBJDUMP=$(ARM_TOOLCHAIN_PREFIX)objdump
 OBJCOPY=$(ARM_TOOLCHAIN_PREFIX)objcopy
 SIZE=$(ARM_TOOLCHAIN_PREFIX)size
 
-LIBSPATH = $(ARM_TOOLCHAIN_PATH)lib/gcc/arm-none-eabi/6.3.1
-LIBS = -L$(LIBSPATH) -lgcc 
-DEFS =
+LIBSPATH = $(ARM_TOOLCHAIN_PATH)lib/gcc/arm-none-eabi/6.3.1/thumb
+LIBSPATH2 = $(ARM_TOOLCHAIN_PATH)arm-none-eabi/lib/thumb
+LIBS = -L$(LIBSPATH) -lgcc -L$(LIBSPATH2) -lm -L$(LIBSPATH2) -lc -L$(LIBSPATH2) -lnosys
+DEFS = 
 
 # Directories
 INCLUDE_DIR = include
@@ -20,11 +21,12 @@ BIN_DIR = bin
 #device and program
 PRG = arm_adxl
 MMCU = -mcpu=cortex-m0 -mthumb 
-OPTIMIZE = -O0 -ggdb
-INCLUDES = -Iinclude -I$(ARM_TOOLCHAIN_PATH)/arm-none-eabi/include 
+OPTIMIZE = -O2
+INCLUDES = -Iinclude -I$(ARM_TOOLCHAIN_PATH)arm-none-eabi/include 
 
-CFLAGS = $(INCLUDES) $(MMCU) $(OPTIMIZE) $(DEFS)
-LDFLAGS = -T lpc824m201_linker_script.ld 
+CFLAGS = $(INCLUDES) $(MMCU) $(OPTIMIZE) $(DEFS) -Wall 
+#LDFLAGS = -Wl,-T,lpc824m201_linker_script.ld -Wl,--cref -Wl,-Map,$(BIN_DIR)/$(PRG).map 
+LDFLAGS = -T lpc824m201_linker_script.ld --cref -Map $(BIN_DIR)/$(PRG).map -nostartfiles 
 
 SOURCES = $(wildcard $(SRC_DIR)/*.c)
 OBJECTS = $(patsubst %,$(BUILD_DIR)/%.o, $(subst src/,,$(subst .c,,$(SOURCES))))
@@ -34,10 +36,10 @@ all: directories $(PRG) hex_size
 $(PRG): $(BIN_DIR)/$(PRG).elf $(BIN_DIR)/lst $(BIN_DIR)/text
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
-	$(CC) -Wall $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BIN_DIR)/$(PRG).elf: $(OBJECTS)
-	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+	$(LD) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 $(BIN_DIR)/lst: $(BIN_DIR)/$(PRG).lst
 $(BIN_DIR)/%.lst: $(BIN_DIR)/%.elf
@@ -51,7 +53,7 @@ $(BIN_DIR)/%.hex: $(BIN_DIR)/%.elf
 
 $(BIN_DIR)/bin: $(BIN_DIR)/$(PRG).bin
 $(BIN_DIR)/%.bin: $(BIN_DIR)/%.elf
-	$(OBJCOPY) -S -O binary $< $@
+	$(OBJCOPY) -O binary $< $@
 
 hex_size:
 	$(SIZE) $(BIN_DIR)/$(PRG).elf

@@ -39,7 +39,7 @@ extern uint32_t SystemCoreClock;     /*!< System Clock Frequency (Core Clock) */
    Initialize the System and update the SystemCoreClock variable.
  */
 extern void SystemInit (void);
-
+extern void _start();
 
 /**
   \brief  Update SystemCoreClock variable.
