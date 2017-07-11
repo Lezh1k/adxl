@@ -123,58 +123,57 @@ void SPI_IRQHandler      (void) __attribute__ ((weak, alias("Default_Handler")))
   Exception / Interrupt Vector table
  *----------------------------------------------------------------------------*/
 const pFunc __Vectors[] __attribute__ ((section(".vectors"))) = {
-                                                                /* Cortex-M0+ Exceptions Handler */
-                                                                (pFunc)((uint32_t)&__StackTop),           /*      Initial Stack Pointer     */
-                                                                Reset_Handler,                            /*      Reset Handler             */
-                                                                NMI_Handler,                              /*      NMI Handler               */
-                                                                HardFault_Handler,                        /*      Hard Fault Handler        */
-                                                                0,                                        /*      Reserved                  */
-                                                                0,                                        /*      Reserved                  */
-                                                                0,                                        /*      Reserved                  */
-                                                                0,                                        /*      Reserved                  */
-                                                                0,                                        /*      Reserved                  */
-                                                                0,                                        /*      Reserved                  */
-                                                                0,                                        /*      Reserved                  */
-                                                                SVC_Handler,                              /*      SVCall Handler            */
-                                                                0,                                        /*      Reserved                  */
-                                                                0,                                        /*      Reserved                  */
-                                                                PendSV_Handler,                           /*      PendSV Handler            */
-                                                                SysTick_Handler,                          /*      SysTick Handler           */
-
-                                                                /* External interrupts */
-                                                                WDT_IRQHandler,                           /*  0:  Watchdog Timer            */
-                                                                RTC_IRQHandler,                           /*  1:  Real Time Clock           */
-                                                                TIM0_IRQHandler,                          /*  2:  Timer0 / Timer1           */
-                                                                TIM2_IRQHandler,                          /*  3:  Timer2 / Timer3           */
-                                                                MCIA_IRQHandler,                          /*  4:  MCIa                      */
-                                                                MCIB_IRQHandler,                          /*  5:  MCIb                      */
-                                                                UART0_IRQHandler,                         /*  6:  UART0 - DUT FPGA          */
-                                                                UART1_IRQHandler,                         /*  7:  UART1 - DUT FPGA          */
-                                                                UART2_IRQHandler,                         /*  8:  UART2 - DUT FPGA          */
-                                                                UART4_IRQHandler,                         /*  9:  UART4 - not connected     */
-                                                                AACI_IRQHandler,                          /* 10: AACI / AC97                */
-                                                                CLCD_IRQHandler,                          /* 11: CLCD Combined Interrupt    */
-                                                                ENET_IRQHandler,                          /* 12: Ethernet                   */
-                                                                USBDC_IRQHandler,                         /* 13: USB Device                 */
-                                                                USBHC_IRQHandler,                         /* 14: USB Host Controller        */
-                                                                CHLCD_IRQHandler,                         /* 15: Character LCD              */
-                                                                FLEXRAY_IRQHandler,                       /* 16: Flexray                    */
-                                                                CAN_IRQHandler,                           /* 17: CAN                        */
-                                                                LIN_IRQHandler,                           /* 18: LIN                        */
-                                                                I2C_IRQHandler,                           /* 19: I2C ADC/DAC                */
-                                                                0,                                        /* 20: Reserved                   */
-                                                                0,                                        /* 21: Reserved                   */
-                                                                0,                                        /* 22: Reserved                   */
-                                                                0,                                        /* 23: Reserved                   */
-                                                                0,                                        /* 24: Reserved                   */
-                                                                0,                                        /* 25: Reserved                   */
-                                                                0,                                        /* 26: Reserved                   */
-                                                                0,                                        /* 27: Reserved                   */
-                                                                CPU_CLCD_IRQHandler,                      /* 28: Reserved - CPU FPGA CLCD   */
-                                                                0,                                        /* 29: Reserved - CPU FPGA        */
-                                                                UART3_IRQHandler,                         /* 30: UART3    - CPU FPGA        */
-                                                                SPI_IRQHandler                            /* 31: SPI Touchscreen - CPU FPGA */
-                                                                };
+  /* Cortex-M0+ Exceptions Handler */
+  (pFunc)((uint32_t)&__StackTop),           /*      Initial Stack Pointer     */
+  Reset_Handler,                            /*      Reset Handler             */
+  NMI_Handler,                              /*      NMI Handler               */
+  HardFault_Handler,                        /*      Hard Fault Handler        */
+  0,                                        /*      Reserved                  */
+  0,                                        /*      Reserved                  */
+  0,                                        /*      Reserved                  */
+  0,                                        /*      Reserved                  */
+  0,                                        /*      Reserved                  */
+  0,                                        /*      Reserved                  */
+  0,                                        /*      Reserved                  */
+  SVC_Handler,                              /*      SVCall Handler            */
+  0,                                        /*      Reserved                  */
+  0,                                        /*      Reserved                  */
+  PendSV_Handler,                           /*      PendSV Handler            */
+  SysTick_Handler,                          /*      SysTick Handler           */
+  /* External interrupts */
+  WDT_IRQHandler,                           /*  0:  Watchdog Timer            */
+  RTC_IRQHandler,                           /*  1:  Real Time Clock           */
+  TIM0_IRQHandler,                          /*  2:  Timer0 / Timer1           */
+  TIM2_IRQHandler,                          /*  3:  Timer2 / Timer3           */
+  MCIA_IRQHandler,                          /*  4:  MCIa                      */
+  MCIB_IRQHandler,                          /*  5:  MCIb                      */
+  UART0_IRQHandler,                         /*  6:  UART0 - DUT FPGA          */
+  UART1_IRQHandler,                         /*  7:  UART1 - DUT FPGA          */
+  UART2_IRQHandler,                         /*  8:  UART2 - DUT FPGA          */
+  UART4_IRQHandler,                         /*  9:  UART4 - not connected     */
+  AACI_IRQHandler,                          /* 10: AACI / AC97                */
+  CLCD_IRQHandler,                          /* 11: CLCD Combined Interrupt    */
+  ENET_IRQHandler,                          /* 12: Ethernet                   */
+  USBDC_IRQHandler,                         /* 13: USB Device                 */
+  USBHC_IRQHandler,                         /* 14: USB Host Controller        */
+  CHLCD_IRQHandler,                         /* 15: Character LCD              */
+  FLEXRAY_IRQHandler,                       /* 16: Flexray                    */
+  CAN_IRQHandler,                           /* 17: CAN                        */
+  LIN_IRQHandler,                           /* 18: LIN                        */
+  I2C_IRQHandler,                           /* 19: I2C ADC/DAC                */
+  0,                                        /* 20: Reserved                   */
+  0,                                        /* 21: Reserved                   */
+  0,                                        /* 22: Reserved                   */
+  0,                                        /* 23: Reserved                   */
+  0,                                        /* 24: Reserved                   */
+  0,                                        /* 25: Reserved                   */
+  0,                                        /* 26: Reserved                   */
+  0,                                        /* 27: Reserved                   */
+  CPU_CLCD_IRQHandler,                      /* 28: Reserved - CPU FPGA CLCD   */
+  0,                                        /* 29: Reserved - CPU FPGA        */
+  UART3_IRQHandler,                         /* 30: UART3    - CPU FPGA        */
+  SPI_IRQHandler                            /* 31: SPI Touchscreen - CPU FPGA */
+};
 
 
 /*----------------------------------------------------------------------------

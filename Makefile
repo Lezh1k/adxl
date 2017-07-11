@@ -19,11 +19,11 @@ BIN_DIR = bin
 
 #device and program
 PRG = arm_adxl
-MMCU = -mcpu=cortex-m0 -mthumb -g
-OPTIMIZE = -Os
+MMCU = -mcpu=cortex-m0 -mthumb 
+OPTIMIZE = -O0 -ggdb
 INCLUDES = -Iinclude -I$(ARM_TOOLCHAIN_PATH)/arm-none-eabi/include 
 
-override CFLAGS = $(INCLUDES) $(MMCU) $(OPTIMIZE) $(DEFS) 
+CFLAGS = $(INCLUDES) $(MMCU) $(OPTIMIZE) $(DEFS)
 LDFLAGS = -T lpc824m201_linker_script.ld 
 
 SOURCES = $(wildcard $(SRC_DIR)/*.c)
@@ -67,14 +67,3 @@ clean:
 mrproper:
 	@rm -rf $(BUILD_DIR)
 	@rm -rf $(BIN_DIR)
-
-
-# The default 'target' (output) is main.elf and it depends on the object files being there.
-# These object files are linked together to create main.elf
-#main.elf : $(OBJS)
-#    $(LD) $(OBJS) $(LIBSPEC) -lgcc -T lpc824m201_linker_script.ld --cref -Map main.map -nostartfiles -o main.elf
-#    objcopy -O ihex main.elf main.hex
-#    @echo "Assuming all went well..."
-#    @echo "Program the chip as follows: lpc21isp main.hex /dev/ttyUSB0 9600 12000000"
-#    @echo "replace ttyUSB0 with the correct device name for your system"
-
