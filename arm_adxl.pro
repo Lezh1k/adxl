@@ -14,5 +14,4 @@ INCLUDEPATH += /home/lezh1k/gcc-arm-none-eabi-6-2017-q2-update/arm-none-eabi/inc
                 include
 DEFINES += __STARTUP_COPY_MULTIPLE
 HEADERS += \
-    include/system_ARMCM0plus.h \    
     include/lpc824.h
