@@ -12,6 +12,13 @@ DISTFILES += \
 
 INCLUDEPATH += /home/lezh1k/gcc-arm-none-eabi-6-2017-q2-update/arm-none-eabi/include \
                 include
-DEFINES += __STARTUP_COPY_MULTIPLE
+DEFINES += __LPC82X__
 HEADERS += \
-    include/lpc824.h
+    include/lpc824.h \
+    include/lpc824_api.h \
+    include/lpc824_api_common.h \
+    include/lpc824_api_power.h \
+    include/lpc824_api_div.h \
+    include/lpc824_api_i2c.h \
+    include/lpc824_api_spi.h \
+    include/lpc824_api_uart.h
