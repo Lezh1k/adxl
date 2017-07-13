@@ -21,11 +21,11 @@ BIN_DIR = bin
 #device and program
 PRG = arm_adxl
 MMCU = -mcpu=cortex-m0 -mthumb 
-OPTIMIZE = -O2 -ggdb
+OPTIMIZE = -g
 INCLUDES = -Iinclude -I$(ARM_TOOLCHAIN_PATH)arm-none-eabi/include 
 
 CFLAGS = $(INCLUDES) $(MMCU) $(OPTIMIZE) $(DEFS) -Wall 
-LDFLAGS = -Wl,-T,lpc824m201_linker_script.ld -Wl,--cref -Wl,-Map,$(BIN_DIR)/$(PRG).map -nostartfiles -Wl,--gc-sections -Wl,-print-memory-usage
+LDFLAGS = -T lpc824m201_linker_script.ld --cref -Map $(BIN_DIR)/$(PRG).map -nostartfiles -print-memory-usage
 
 SOURCES = $(wildcard $(SRC_DIR)/*.c)
 OBJECTS = $(patsubst %,$(BUILD_DIR)/%.o, $(subst src/,,$(subst .c,,$(SOURCES))))
@@ -38,17 +38,21 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BIN_DIR)/$(PRG).elf: $(OBJECTS)
-	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+	$(LD) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 $(BIN_DIR)/lst: $(BIN_DIR)/$(PRG).lst
 $(BIN_DIR)/%.lst: $(BIN_DIR)/%.elf
 	$(OBJDUMP) -h -S $< > $@
 
-$(BIN_DIR)/text: $(BIN_DIR)/bin
+$(BIN_DIR)/text: $(BIN_DIR)/bin $(BIN_DIR)/hex
 
 $(BIN_DIR)/bin: $(BIN_DIR)/$(PRG).bin
 $(BIN_DIR)/%.bin: $(BIN_DIR)/%.elf
 	$(OBJCOPY) -O binary $< $@
+
+$(BIN_DIR)/hex: $(BIN_DIR)/$(PRG).hex
+$(BIN_DIR)/%.hex: $(BIN_DIR)/%.elf
+	$(OBJCOPY) -O ihex $< $@
 
 directories:
 	@mkdir -p $(BUILD_DIR)
