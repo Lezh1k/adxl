@@ -1,8 +1,8 @@
 /* Linker script to configure memory regions. */
 MEMORY
 {
-  FLASH (rx)  : ORIGIN = 0x00000000, LENGTH = 512K
-  RAM   (rwx) : ORIGIN = 0x20000000, LENGTH = 256K
+  FLASH (rx)  : ORIGIN = 0x00000000, LENGTH = 32k
+  RAM   (rwx) : ORIGIN = 0x10000000, LENGTH = 8k
 }
 
 /*GROUP(libgcc.a libc.a libm.a libnosys.a)*/
@@ -48,4 +48,12 @@ SECTIONS
 
     PROVIDE(_pvHeapStart = .);
     PROVIDE(__stack_top = ORIGIN(RAM) + LENGTH(RAM));
+
+    PROVIDE(__valid_user_code_checksum = 0 -
+                                         (__stack_top
+                                         + (ResetIntHandler + 1)
+                                         + (NMI_Handler + 1)
+                                         + (HardFault_Handler + 1)
+                                         )
+           );
 }

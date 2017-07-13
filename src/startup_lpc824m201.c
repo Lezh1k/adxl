@@ -10,22 +10,6 @@ extern int main(void);
 void IntDefaultHandler(void);                           /* Default empty handler */
 void ResetIntHandler(void);                             /* Reset Handler */
 
-
-/*----------------------------------------------------------------------------
-  User Initial Stack & Heap
- *----------------------------------------------------------------------------*/
-#ifndef __STACK_SIZE
-#define	__STACK_SIZE  0x00000400
-#endif
-static uint8_t stack[__STACK_SIZE] __attribute__ ((aligned(8), used, section(".stack")));
-
-#ifndef __HEAP_SIZE
-#define	__HEAP_SIZE   0x00000C00
-#endif
-#if __HEAP_SIZE > 0
-static uint8_t heap[__HEAP_SIZE]   __attribute__ ((aligned(8), used, section(".heap")));
-#endif
-
 extern uint32_t _etext, _data, _edata, _bss, _ebss, __stack_top;
 
 // Simple gcc- and g++-compatible C runtime init
@@ -68,6 +52,7 @@ void CPU_CLCD_IRQHandler (void) __attribute__ ((weak, alias("IntDefaultHandler")
 void UART3_IRQHandler    (void) __attribute__ ((weak, alias("IntDefaultHandler")));
 void SPI_IRQHandler      (void) __attribute__ ((weak, alias("IntDefaultHandler")));
 
+extern void __valid_user_code_checksum() __attribute__ ((weak));
 /*----------------------------------------------------------------------------
   Exception / Interrupt Vector table
  *----------------------------------------------------------------------------*/
@@ -80,7 +65,7 @@ const pFunc __Vectors[] __attribute__ ((section(".vectors"))) = {
   0,                                        /*      Reserved                  */
   0,                                        /*      Reserved                  */
   0,                                        /*      Reserved                  */
-  0,                                        /*      Reserved                  */
+  __valid_user_code_checksum,               /*      Reserved                  */
   0,                                        /*      Reserved                  */
   0,                                        /*      Reserved                  */
   0,                                        /*      Reserved                  */
@@ -123,6 +108,7 @@ const pFunc __Vectors[] __attribute__ ((section(".vectors"))) = {
   UART3_IRQHandler,                         /* 30: UART3    - CPU FPGA        */
   SPI_IRQHandler                            /* 31: SPI Touchscreen - CPU FPGA */
 };
+//////////////////////////////////////////////////////////////////////////
 
 static inline void
 crt0(void) {
@@ -143,6 +129,7 @@ crt0(void) {
   while (dest < &__init_array_end)
     (*(void(**)(void)) dest++)();
 }
+//////////////////////////////////////////////////////////////////////////
 
 /*----------------------------------------------------------------------------
   Reset Handler called on controller reset
@@ -159,7 +146,4 @@ ResetIntHandler(void) {
 // Processor ends up here if an unexpected interrupt occurs or a specific
 // handler is not present in the application code.
 __attribute__ ((section(".after_vectors")))
-void
-IntDefaultHandler(void) {
-  while(1) ;
-}
+void IntDefaultHandler(void) {  while(1) ; }

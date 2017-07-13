@@ -1,0 +1,5 @@
+r
+erase
+loadbin /home/lezh1k/SRC/arm_adxl/bin/arm_adxl.bin, 0x0
+r
+q

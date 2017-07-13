@@ -21,7 +21,7 @@ BIN_DIR = bin
 #device and program
 PRG = arm_adxl
 MMCU = -mcpu=cortex-m0 -mthumb 
-OPTIMIZE = -g
+OPTIMIZE = -O0 -g
 INCLUDES = -Iinclude -I$(ARM_TOOLCHAIN_PATH)arm-none-eabi/include 
 
 CFLAGS = $(INCLUDES) $(MMCU) $(OPTIMIZE) $(DEFS) -Wall 
@@ -65,3 +65,6 @@ clean:
 mrproper:
 	@rm -rf $(BUILD_DIR)
 	@rm -rf $(BIN_DIR)
+
+program:
+	@./jlink_lpc824m201.sh
