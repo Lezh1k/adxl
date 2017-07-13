@@ -161,5 +161,5 @@ ResetIntHandler(void) {
 __attribute__ ((section(".after_vectors")))
 void
 IntDefaultHandler(void) {
-    while(1) ;
+  while(1) ;
 }
