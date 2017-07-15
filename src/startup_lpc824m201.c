@@ -7,7 +7,6 @@ typedef void( *pFunc )( void );
 extern void SystemInit (void);
 extern int main(void);
 
-void IntDefaultHandler(void);                           /* Default empty handler */
 void ResetIntHandler(void);                             /* Reset Handler */
 
 extern uint32_t _etext, _data, _edata, _bss, _ebss, __stack_top;
@@ -18,39 +17,55 @@ extern uint32_t __init_array_end;
 
 
 /*----------------------------------------------------------------------------
+  User Initial Stack & Heap
+ *----------------------------------------------------------------------------*/
+//#ifndef __STACK_SIZE
+//#define	__STACK_SIZE  0x00000400
+//#endif
+//static uint8_t g_stack[__STACK_SIZE] __attribute__ ((aligned(8), used, section(".stack")));
+
+//#ifndef __HEAP_SIZE
+//#define	__HEAP_SIZE   0x00000C00
+//#endif
+//#if __HEAP_SIZE > 0
+//static uint8_t g_heap[__HEAP_SIZE]   __attribute__ ((aligned(8), used, section(".heap")));
+//#endif
+
+
+/*----------------------------------------------------------------------------
   Exception / Interrupt Handler
  *----------------------------------------------------------------------------*/
 /* Cortex-M0+ Processor Exceptions */
-void NMI_Handler         (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void HardFault_Handler   (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void SVC_Handler         (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void PendSV_Handler      (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void SysTick_Handler     (void) __attribute__ ((weak, alias("IntDefaultHandler")));
+void NMI_Handler         (void) {  while(1) ; }
+void HardFault_Handler   (void) {  while(1) ; }
+void SVC_Handler         (void) {  while(1) ; }
+void PendSV_Handler      (void) {  while(1) ; }
+void SysTick_Handler     (void) {  while(1) ; }
 
 /* ARMCM0plus Specific Interrupts */
-void WDT_IRQHandler      (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void RTC_IRQHandler      (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void TIM0_IRQHandler     (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void TIM2_IRQHandler     (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void MCIA_IRQHandler     (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void MCIB_IRQHandler     (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void UART0_IRQHandler    (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void UART1_IRQHandler    (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void UART2_IRQHandler    (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void UART4_IRQHandler    (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void AACI_IRQHandler     (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void CLCD_IRQHandler     (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void ENET_IRQHandler     (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void USBDC_IRQHandler    (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void USBHC_IRQHandler    (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void CHLCD_IRQHandler    (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void FLEXRAY_IRQHandler  (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void CAN_IRQHandler      (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void LIN_IRQHandler      (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void I2C_IRQHandler      (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void CPU_CLCD_IRQHandler (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void UART3_IRQHandler    (void) __attribute__ ((weak, alias("IntDefaultHandler")));
-void SPI_IRQHandler      (void) __attribute__ ((weak, alias("IntDefaultHandler")));
+void WDT_IRQHandler      (void) {  while(1) ; }
+void RTC_IRQHandler      (void) {  while(1) ; }
+void TIM0_IRQHandler     (void) {  while(1) ; }
+void TIM2_IRQHandler     (void) {  while(1) ; }
+void MCIA_IRQHandler     (void) {  while(1) ; }
+void MCIB_IRQHandler     (void) {  while(1) ; }
+void UART0_IRQHandler    (void) {  while(1) ; }
+void UART1_IRQHandler    (void) {  while(1) ; }
+void UART2_IRQHandler    (void) {  while(1) ; }
+void UART4_IRQHandler    (void) {  while(1) ; }
+void AACI_IRQHandler     (void) {  while(1) ; }
+void CLCD_IRQHandler     (void) {  while(1) ; }
+void ENET_IRQHandler     (void) {  while(1) ; }
+void USBDC_IRQHandler    (void) {  while(1) ; }
+void USBHC_IRQHandler    (void) {  while(1) ; }
+void CHLCD_IRQHandler    (void) {  while(1) ; }
+void FLEXRAY_IRQHandler  (void) {  while(1) ; }
+void CAN_IRQHandler      (void) {  while(1) ; }
+void LIN_IRQHandler      (void) {  while(1) ; }
+void I2C_IRQHandler      (void) {  while(1) ; }
+void CPU_CLCD_IRQHandler (void) {  while(1) ; }
+void UART3_IRQHandler    (void) {  while(1) ; }
+void SPI_IRQHandler      (void) {  while(1) ; }
 
 extern void __valid_user_code_checksum() __attribute__ ((weak));
 /*----------------------------------------------------------------------------
@@ -65,7 +80,7 @@ const pFunc __Vectors[] __attribute__ ((section(".vectors"))) = {
   0,                                        /*      Reserved                  */
   0,                                        /*      Reserved                  */
   0,                                        /*      Reserved                  */
-  __valid_user_code_checksum,               /*      Reserved                  */
+  __valid_user_code_checksum,               /*      Reserved  ???             */
   0,                                        /*      Reserved                  */
   0,                                        /*      Reserved                  */
   0,                                        /*      Reserved                  */
@@ -142,8 +157,4 @@ ResetIntHandler(void) {
   main();
   while (1) ; // hang if main returns
 }
-
-// Processor ends up here if an unexpected interrupt occurs or a specific
-// handler is not present in the application code.
-__attribute__ ((section(".after_vectors")))
-void IntDefaultHandler(void) {  while(1) ; }
+//////////////////////////////////////////////////////////////////////////
