@@ -52,72 +52,68 @@ typedef enum adxl_consts {
 } adxl_consts_t;
 //////////////////////////////////////////////////////////////////////////
 
+uint16_t
+send_adxl_command(uint8_t rw, uint8_t cmd, uint8_t val);
+
 int
 main(void) {
-  uint8_t commands[] = {DEVID_AD, DEVID_MST, DEVID};
+  uint8_t commands[] = {STATUS, DEVID, 0xff};
+
+  /*
+    1. Set activity and inactivity thresholds and timers.
+      a. Write to Register 0x20 to Register 0x26.
+      b. To minimize false positive motion triggers, set the
+      TIME_ACT register greater than 1.
+    2. Configure activity and inactivity functions.
+      a. Write to Register 0x27.
+    3. Configure FIFO.
+      a. Write to Register 0x28 and Register 0x29.
+    4. Map interrupts.
+      a. Write to Register 0x2A and Register 0x2B.
+    5. Configure general device settings.
+      a. Write to Register 0x2C.
+    6. Turn measurement on.
+      a. Write to Register 0x2D.
+    7. Wait 4/ODR for data to settle before reading the data
+    registers.
+  */
+
+  uint8_t init_data[] = {
+    0xfa, 0x00, //set activity threshold to 250 mg
+    0x96, 0x00, //set inactivity threshold to 150 mg
+    0x1e, 0x00, //set inactivity timer to 30 samples
+    0x00, //disable activity/inactivity interrupts? o_O 0x27
+    0x00, 0x00, //don't use FIFO, 0x28, 0x29
+    0x00, 0x00, //no interrupts? map registers 0x2a, 0x2b
+    0b00010011, //+-2g, HALF_BW, no EXT_SAMPLE, 100Hz
+    0b10000010 //adc enabled, no ext clock, normal mode, no wake-up (measurement), no autosleep, measurement mode
+  };
+
   volatile uint32_t rx_data = 0;
   volatile uint16_t adxl_data = 0;
-//  int i, j;
+
   config_pins();
 
   SYSCON_SYSAHBCLKCTRL |= (1 << 11); //enable clock for SPI0
   SYSCON_PRESETCTRL |= (1 << 0); //reset SPI0
-  NVIC_ISER0 |= (1 << 0); //enable SPI0 interrupt. why?
+//  NVIC_ISER0 |= (1 << 0); //enable SPI0 interrupt. why?
 
   SPI0_CFG = SPI_CFG_MASTER | SPI_CFG_ENABLE; //enable SPI0 master mode
   SPI0_DLY = 0x00000000; //no delay
-  SPI0_DIV = 0x000b; //1 MHz
+  SPI0_DIV = 0x0003; //divider is 4. result is 3 MHz
 
   while(~SPI0_STAT & SPI_STAT_TXRDY) ;
-
-  while (1) {
-    int i;
-    for (i = 0; i < 3; ++i) {
-
-      SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(15) |
-                      SPI_TXDATCTL_SSEL_N(0xe) |
-                      (uint16_t)((adxl_read_r << 8) | commands[i]);
-
-      while(~SPI0_STAT & SPI_STAT_RXRDY) ;
-      rx_data = SPI0_RXDAT;
-      adxl_data = (uint16_t) (rx_data & 0x00ff);
-
-      while(~SPI0_STAT & SPI_STAT_TXRDY) ;
-      SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(7) | SPI_TXDATCTL_EOT |
-                      SPI_TXDATCTL_SSEL_N(0xe) | 0xff;
-
-      while(~SPI0_STAT & SPI_STAT_RXRDY) ;
-      rx_data = SPI0_RXDAT;
-      adxl_data = (uint16_t) (rx_data & 0x00ff);
-      while(~SPI0_STAT & SPI_STAT_TXRDY) ;
-    }
+  int i;
+  for (i = 0x20; i <= 0x2d; ++i) {
+    send_adxl_command(adxl_write_r, i, init_data[i-0x20]);
   }
 
-//  GPIO_PIN0 |= (1 << 3);
-//  while (1) {
-//    for (i = 0; i < 3; ++i) {
-//      uint8_t cmd[] = {adxl_read_r, commands[i], 0x00};
-//      GPIO_PIN0 &= ~(1 << 2);
-//      for (j = 0; j < 3; ++j) {
-//        int8_t t = 8;
-//        do {
-//          if (cmd[j] & 0x80 ) GPIO_PIN0 |= (1 << 0);
-//          else GPIO_PIN0 &= ~(1 << 0);
-
-//          GPIO_PIN0 |= (1 << 2); //strobe high
-
-//          cmd[j] <<= 1;
-//          cmd[j] |= (GPIO_PIN0 & (1 << 1)) ? 1 : 0;
-
-//          GPIO_PIN0 &= ~(1 << 2); //strobe low
-//        } while(--t);
-//      }
-//      GPIO_PIN0 |= (1 << 2);
-//      adxl_data = cmd[2];
-//      rx_data = adxl_data;
-//    }
-//  }
-
+  while (1) {
+    for (i = 0; commands[i] != 0xff; ++i) {
+      adxl_data = send_adxl_command(adxl_read_r, commands[i], 0x00);
+      rx_data = adxl_data;
+    }
+  }
 
   return 0;
 }
@@ -132,14 +128,14 @@ config_pins() {
   SWM_PINENABLE0 &= ~(1 << 8); // RESET on pin PIO0_5
   SWM_PINENABLE0 &= ~(1 << 9); // CLKIN on pin PIO0_1
 
+//  GPIO_DIR0 |= (1 << 0) | (1 << 2) | (1 << 3);
+//  GPIO_DIR0 &= ~(1 << 1);
+
   /*spi0 config*/
 //  SWM_PINASSIGN3 |= 0x03000000; //SPI0_CLK -> PIN3
 //  SWM_PINASSIGN4 |= 0x00000001; //SPI0_MOSI -> PIN1
 //  SWM_PINASSIGN4 |= 0x00000200; //SPI0_MISO -> PIN2
 //  SWM_PINASSIGN4 |= 0x00040000; //SPI0_SSEL0 -> PIN4
-
-  GPIO_DIR0 |= (1 << 0) | (1 << 2) | (1 << 3);
-  GPIO_DIR0 &= ~(1 << 1);
 
   SWM_PINASSIGN3 |= 0x0d000000; //SPI0_CLK -> PIO0_13
   SWM_PINASSIGN4 |= 0x00000017; //SPI0_MOSI -> PIO0_23
@@ -169,3 +165,51 @@ SystemInit (void) {
   SWM_PINASSIGN11 = (23 << 16); // route clock out on pin 1 (GPIO0_23)
 }
 //////////////////////////////////////////////////////////////////////////
+
+uint16_t
+send_adxl_command(uint8_t rw,
+                  uint8_t cmd,
+                  uint8_t val) {
+  uint32_t rx_data;
+  uint16_t adxl_data;
+  SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(15) |
+                  SPI_TXDATCTL_SSEL_N(0xe) |
+                  (uint16_t)((rw << 8) | cmd);
+
+  while(~SPI0_STAT & SPI_STAT_RXRDY) ;
+  rx_data = SPI0_RXDAT;
+  adxl_data = (uint16_t) (rx_data & 0x00ff);
+  while(~SPI0_STAT & SPI_STAT_TXRDY) ;
+
+  SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(7) | SPI_TXDATCTL_EOT |
+                  SPI_TXDATCTL_SSEL_N(0xe) | val;
+
+  while(~SPI0_STAT & SPI_STAT_RXRDY) ;
+  rx_data = SPI0_RXDAT;
+  adxl_data = (uint16_t) (rx_data & 0x00ff);
+  while(~SPI0_STAT & SPI_STAT_TXRDY) ;
+
+  return adxl_data;
+//  register int32_t j;
+//  uint16_t adxl_data = 0;
+//  uint8_t cmd_arr[] = {rw, cmd, val};
+//  GPIO_PIN0 &= ~(1 << 2);  //clk down
+//  GPIO_PIN0 &= ~(1 << 3); //cs down
+//  for (j = 0; j < 3; ++j) {
+//    int8_t t = 8;
+//    do {
+//      if (cmd_arr[j] & 0x80 ) GPIO_PIN0 |= (1 << 0);
+//      else GPIO_PIN0 &= ~(1 << 0);
+
+//      GPIO_PIN0 |= (1 << 2); //strobe high
+
+//      cmd_arr[j] <<= 1;
+//      cmd_arr[j] |= (GPIO_PIN0 & (1 << 1)) ? 1 : 0;
+
+//      GPIO_PIN0 &= ~(1 << 2); //strobe low
+//    } while(--t);
+//  }
+//  GPIO_PIN0 |= (1 << 3); //cs up
+//  adxl_data = cmd_arr[2];
+//  return adxl_data;
+}

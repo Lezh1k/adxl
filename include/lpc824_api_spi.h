@@ -4,8 +4,10 @@
 #include <stdint.h>
 #include "lpc824_api_common.h"
 
-#define SPI_CFG_ENABLE (0x1)
-#define SPI_CFG_MASTER (0x4)
+#define SPI_CFG_ENABLE (1)
+#define SPI_CFG_MASTER (1 << 2)
+#define SPI_CFG_LSBF (1 << 3)
+
 #define SPI_STAT_RXRDY (0x1)
 #define SPI_STAT_TXRDY (0x2)
 #define SPI_STAT_SSD (0x20)
@@ -27,17 +29,6 @@ typedef enum {
   SPI_SLAVE2 = ((~(1 << 2)) & 0xf),
   SPI_SLAVE3 = ((~(1 << 3)) & 0xf)
 } spi_slave_t;
-
-#define SPI_MASTER_FRAME_SIZE (8 - 1)
-#define SPI_SLAVE_FRAME_SIZE (8 - 1)
-
-#define TXDATCTL_SSELN(s) (s << 16)
-#define TXDATCTL_EOT (1 << 20)
-#define TXDATCTL_EOF (1 << 21)
-#define TXDATCTL_RX_IGNORE (1 << 22)
-#define TXDATCTL_FSIZE(s) ((s) << 24)
-
-#define RXDAT_SOT (1 << 20)
 
 typedef struct spi_config {
   uint32_t delay;
