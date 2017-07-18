@@ -1,8 +1,8 @@
 /* Linker script to configure memory regions. */
 MEMORY
 {
-  FLASH (rx)  : ORIGIN = 0x00000000, LENGTH = 32k
-  RAM   (rwx) : ORIGIN = 0x10000000, LENGTH = 8k
+  FLASH (rx)  : ORIGIN = 0x00000000, LENGTH = 0x8000 /* 32K bytes */
+  RAM   (rwx) : ORIGIN = 0x10000000, LENGTH = 0x2000 /* 8K bytes */
 }
 
 /*GROUP(libgcc.a libc.a libm.a libnosys.a)*/

@@ -10,8 +10,8 @@
 
 #define SPI_STAT_RXRDY (0x1)
 #define SPI_STAT_TXRDY (0x2)
-#define SPI_STAT_SSD (0x20)
 #define SPI_STAT_MSTIDLE (0x100)
+
 #define SPI_TXDATCTL_SSEL_N(s) ((s) << 16)
 #define SPI_TXDATCTL_EOT (1 << 20)
 #define SPI_TXDATCTL_EOF (1 << 21)

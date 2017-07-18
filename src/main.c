@@ -55,6 +55,10 @@ typedef enum adxl_consts {
 uint16_t
 send_adxl_command(uint8_t rw, uint8_t cmd, uint8_t val);
 
+void wait(uint32_t timeout) {
+  while (--timeout) ;
+}
+
   /*
    * init adxl363
     1. Set activity and inactivity thresholds and timers.
@@ -78,41 +82,43 @@ int
 main(void) {
   uint8_t commands[] = {STATUS, DEVID, 0xff};
   uint8_t init_data[] = {
-    0xfa, 0x00, //set activity threshold to 250 mg
-    0x96, 0x00, //set inactivity threshold to 150 mg
-    0x1e, 0x00, //set inactivity timer to 30 samples
-    0x00, //disable activity/inactivity interrupts? o_O 0x27
+    0xfa, 0x00, //set activity threshold to 250 mg 0x20, 0x21 LOW then HIGH half
+    0x00,       //set activity time to 0  0x22
+    0x96, 0x00, //set inactivity threshold to 150 mg 0x23, 0x24 LOW then HIGH half
+    0x1e, 0x00, //set inactivity timer to 30 samples 0x25, 0x26 LOW then HIGH half
+    0x00,       //disable activity/inactivity interrupts 0x27
     0x00, 0x00, //don't use FIFO, 0x28, 0x29
     0x00, 0x00, //no interrupts? map registers 0x2a, 0x2b
-    0b00010011, //+-2g, HALF_BW, no EXT_SAMPLE, 100Hz
-    0b10010010 //adc enabled, no ext clock, low noise, no wake-up (measurement), no autosleep, measurement mode
+    0b00010011, //+-2g, HALF_BW, no EXT_SAMPLE, 100Hz, 0x2c
+    0b00010010  //adc disabled, no ext clock, low noise, no wake-up,
+                //no autosleep, measurement mode 0x2d
   };
 
   volatile uint16_t adxl_data = 0;
-  int i;
+  uint32_t i;
 
-  config_pins();
-
+  SYSCON_PRESETCTRL &= ~(1 << 0); //reset SPI0
   SYSCON_SYSAHBCLKCTRL |= (1 << 11); //enable clock for SPI0
-  SYSCON_PRESETCTRL |= (1 << 0); //reset SPI0
+  SYSCON_PRESETCTRL |= (1 << 0); //take SPI0 out of reset
+
   NVIC_ISER0 |= (1 << 0); //enable SPI0 interrupt. why?
+  SPI0_DLY = 0x00001009; //1 tick post and pre delay. 1 tick transaction delay.
+  SPI0_DIV = 0x0018; //divider is 24. result is 0.5 MHz
+  SPI0_CFG = SPI_CFG_ENABLE | SPI_CFG_MASTER ; //enable SPI0 master mode, CPHA = CPOL = 0
 
-  SPI0_CFG = SPI_CFG_MASTER | SPI_CFG_ENABLE; //enable SPI0 master mode, CPHA = CPOL = 0
-  SPI0_DLY = 0x00001009; //1 tick post and pre delay. 1 tick transaction delay
-  SPI0_DIV = 0x0003; //divider is 4. result is 3 MHz  
+  while(1);
 
-  send_adxl_command(adxl_write_r, SOFT_RESET, 0x52);
+  adxl_data = send_adxl_command(adxl_write_r, SOFT_RESET, 0x52);
+  wait(1000000);
 
   for (i = 0x20; i <= 0x2d; ++i) {
     send_adxl_command(adxl_write_r, i, init_data[i-0x20]);
   }
+  wait(1000000);
 
   while (1) {
     for (i = 0; commands[i] != 0xff; ++i) {
       adxl_data = send_adxl_command(adxl_read_r, commands[i], 0x00);
-      if (adxl_data != 0x00) {
-        while (1) ;
-      }
     }
   }
 
@@ -122,48 +128,35 @@ main(void) {
 
 void
 config_pins() {
-
   /*base config*/
-  SWM_PINENABLE0 &= ~(1 << 6); // XTALIN on pin PIO0_8
-  SWM_PINENABLE0 &= ~(1 << 7); // XTALOUT on pin PIO0_9
-  SWM_PINENABLE0 &= ~(1 << 8); // RESET on pin PIO0_5
-  SWM_PINENABLE0 &= ~(1 << 9); // CLKIN on pin PIO0_1
+  SWM_PINENABLE0 &= ~(1 << 5); // XTALIN on pin PIO0_8
+  SWM_PINENABLE0 &= ~(1 << 6); // XTALOUT on pin PIO0_9
+  SWM_PINENABLE0 &= ~(1 << 7); // RESET on pin PIO0_5
+  SWM_PINENABLE0 &= ~(1 << 8); // CLKIN on pin PIO0_1
 
+  /*spi0 config*/
 //  GPIO_DIR0 |= (1 << 0) | (1 << 2) | (1 << 3);
 //  GPIO_DIR0 &= ~(1 << 1);
 
-  /*spi0 config*/
-//  SWM_PINASSIGN3 |= 0x03000000; //SPI0_CLK -> PIN3
-//  SWM_PINASSIGN4 |= 0x00000001; //SPI0_MOSI -> PIN1
-//  SWM_PINASSIGN4 |= 0x00000200; //SPI0_MISO -> PIN2
-//  SWM_PINASSIGN4 |= 0x00040000; //SPI0_SSEL0 -> PIN4
-
-  SWM_PINASSIGN3 |= 0x0d000000; //SPI0_CLK -> PIO0_13
-  SWM_PINASSIGN4 |= 0x00000017; //SPI0_MOSI -> PIO0_23
-  SWM_PINASSIGN4 |= 0x00001100; //SPI0_MISO -> PIO0_17
-  SWM_PINASSIGN4 |= 0x000c0000; //SPI0_SSEL0 -> PIO0_12
+  SWM_PINASSIGN3 = 0x0d000000;  //SPI0_CLK -> PIO0_13
+  SWM_PINASSIGN4 = 0x00000017 | //SPI0_MOSI -> PIO0_23
+                   0x00001100 | //SPI0_MISO -> PIO0_17
+                   0x000c0000;  //SPI0_SSEL0 -> PIO0_12
 
   /*uart0 config*/
 }
 
 void
 SystemInit (void) {
-  SYSCON_PDRUNCFG &= ~(1 << 7); // Power up the PLL.
+  SYSCON_MAINCLKSEL   = 0x00; //main clock source = IRC
+  SYSCON_SYSAHBCLKDIV = 0x01; //divider 1
+  SYSCON_MAINCLKUEN   = 0x01; //update main clock source
 
-  SYSCON_SYSPLLCLKSEL = 0; // select internal RC oscillator
-  SYSCON_SYSPLLCLKUEN = 1; // inform PLL of update
+  SYSCON_CLKOUTSEL = 0x00; // select main clock as clock out source
+  SYSCON_CLKOUTDIV = 0x01; // enable divider
+  SYSCON_CLKOUTUEN = 0x01; // update clockout source
 
-  SYSCON_SYSPLLCTRL = (4 << 0) | (0 << 5); // set divisors/multipliers
-  SYSCON_SYSPLLCLKUEN = 1; // inform PLL of update
-
-  SYSCON_MAINCLKSEL = 3; // Use PLL as main clock
-  SYSCON_MAINCLKUEN = 1; // Inform core of clock update
-
-  SYSCON_CLKOUTSEL = 3; // select main clock as clock out source
-  SYSCON_CLKOUTDIV = 1; // divide down so easier to measure
-  SYSCON_CLKOUTUEN = 1; // update clockout source
-
-  SWM_PINASSIGN11 = (23 << 16); // route clock out on pin 1 (GPIO0_23)
+  config_pins();
 }
 //////////////////////////////////////////////////////////////////////////
 
@@ -171,32 +164,30 @@ uint16_t
 send_adxl_command(uint8_t rw,
                   uint8_t cmd,
                   uint8_t val) {
-  uint32_t ln0, ln1, ln2, ln3;
   uint32_t rx_data;
   uint16_t adxl_data;
 
   while(~SPI0_STAT & SPI_STAT_TXRDY) ;
+
   SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(15) |     //2 bytes
                   SPI_TXDATCTL_SSEL_N(0xe) |  //SSEL0 asserted
                   (uint16_t)((rw << 8) | cmd);
 
-  ln0 = 0;
-  while(~SPI0_STAT & SPI_STAT_RXRDY) ++ln0;
+  while(~SPI0_STAT & SPI_STAT_RXRDY) ;
+
   rx_data = SPI0_RXDAT;
   adxl_data = (uint16_t) (rx_data & 0x00ff);
-  ln1 = 0;
-  while(~SPI0_STAT & SPI_STAT_TXRDY) ++ln1;
+  while(~SPI0_STAT & SPI_STAT_TXRDY) ;
 
   SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(7) |      //1 byte
                   SPI_TXDATCTL_EOT |          //end of transaction.
                   SPI_TXDATCTL_SSEL_N(0xe) |  //SSEL0 asserted
                   val;
-  ln2 = 0;
-  while(~SPI0_STAT & SPI_STAT_RXRDY) ++ln2;
+  while(~SPI0_STAT & SPI_STAT_RXRDY) ;
+
   rx_data = SPI0_RXDAT;
   adxl_data = (uint16_t) (rx_data & 0x00ff);
-  ln3 = 0;
-  while(~SPI0_STAT & SPI_STAT_TXRDY) ++ln3;
-  rx_data = ln0 + ln1 + ln2 + ln3;
+
+  while(~SPI0_STAT & SPI_STAT_MSTIDLE) ;
   return adxl_data;
 }
