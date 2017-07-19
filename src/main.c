@@ -104,9 +104,7 @@ main(void) {
   NVIC_ISER0 |= (1 << 0); //enable SPI0 interrupt. why?
   SPI0_DLY = 0x00001009; //1 tick post and pre delay. 1 tick transaction delay.
   SPI0_DIV = 0x0018; //divider is 24. result is 0.5 MHz
-  SPI0_CFG = SPI_CFG_ENABLE | SPI_CFG_MASTER ; //enable SPI0 master mode, CPHA = CPOL = 0
-
-  while(1);
+  SPI0_CFG = SPI_CFG_ENABLE | SPI_CFG_MASTER ; //enable SPI0 master mode, CPHA = CPOL = 0  
 
   adxl_data = send_adxl_command(adxl_write_r, SOFT_RESET, 0x52);
   wait(1000000);
@@ -136,10 +134,10 @@ config_pins() {
 
   /*spi0 config*/
 
-  SWM_PINASSIGN3 = 0x0d000000;  //SPI0_CLK -> PIO0_13
-  SWM_PINASSIGN4 = 0x00000017 | //SPI0_MOSI -> PIO0_23
-                   0x00001100 | //SPI0_MISO -> PIO0_17
-                   0x000c0000;  //SPI0_SSEL0 -> PIO0_12
+  SWM_PINASSIGN3 = 0x0dffffff;  //SPI0_CLK -> PIO0_13
+  SWM_PINASSIGN4 = 0xff000017 | //SPI0_MOSI -> PIO0_23
+                   0xff001100 | //SPI0_MISO -> PIO0_17
+                   0xff0c0000;  //SPI0_SSEL0 -> PIO0_12
 
   /*uart0 config*/
 }
