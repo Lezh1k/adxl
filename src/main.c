@@ -129,14 +129,12 @@ main(void) {
 void
 config_pins() {
   /*base config*/
-  SWM_PINENABLE0 &= ~(1 << 5); // XTALIN on pin PIO0_8
-  SWM_PINENABLE0 &= ~(1 << 6); // XTALOUT on pin PIO0_9
-  SWM_PINENABLE0 &= ~(1 << 7); // RESET on pin PIO0_5
-  SWM_PINENABLE0 &= ~(1 << 8); // CLKIN on pin PIO0_1
+  SWM_PINENABLE0 &= ~(1 << 6); // XTALIN on pin PIO0_8
+  SWM_PINENABLE0 &= ~(1 << 7); // XTALOUT on pin PIO0_9
+  SWM_PINENABLE0 &= ~(1 << 8); // RESET on pin PIO0_5
+  SWM_PINENABLE0 &= ~(1 << 9); // CLKIN on pin PIO0_1
 
   /*spi0 config*/
-//  GPIO_DIR0 |= (1 << 0) | (1 << 2) | (1 << 3);
-//  GPIO_DIR0 &= ~(1 << 1);
 
   SWM_PINASSIGN3 = 0x0d000000;  //SPI0_CLK -> PIO0_13
   SWM_PINASSIGN4 = 0x00000017 | //SPI0_MOSI -> PIO0_23
