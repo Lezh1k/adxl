@@ -4,7 +4,8 @@ CONFIG -= app_bundle
 CONFIG -= qt
 
 SOURCES += src/main.c \
-    src/startup_lpc824m201.c
+    src/startup_lpc824m201.c \
+    src/adxl363.c
 
 DISTFILES += \
     lpc824m201_linker_script.ld \
@@ -21,4 +22,5 @@ HEADERS += \
     include/lpc824_api_div.h \
     include/lpc824_api_i2c.h \
     include/lpc824_api_spi.h \
-    include/lpc824_api_uart.h
+    include/lpc824_api_uart.h \
+    include/adxl363.h
