@@ -21,13 +21,15 @@ typedef enum adxl_odr {
 //////////////////////////////////////////////////////////////////////////
 
 // todo make API
-void adxl_init(void);
+void adxl_reset(void);
 void adxl_set_range(adxl_range_t range);
 void adxl_set_odr(adxl_odr_t odr);
 
-uint16_t adxl_X(void);
-uint16_t adxl_Y(void);
-uint16_t adxl_Z(void);
+int16_t adxl_X(void);
+int16_t adxl_Y(void);
+int16_t adxl_Z(void);
 uint32_t adxl_dev_sign(void);
+uint8_t adxl_check(void);
+adxl_range_t adxl_current_range(void);
 
 #endif  // ADXL363_H

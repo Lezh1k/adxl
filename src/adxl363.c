@@ -2,6 +2,9 @@
 #include "lpc824.h"
 #include "lpc824_api_spi.h"
 
+//first 3 registers
+#define ADXL363_SIGNATURE 0x00ad1df3
+
 typedef enum adxl_register {
   /*registers*/
   AR_DEVID_AD = 0x00,        //[7:0] DEVID_AD[7:0] 0xAD R
@@ -55,10 +58,12 @@ typedef enum adxl_cmd {
 uint16_t read_register(uint8_t reg);
 void write_register(uint8_t reg,
                     uint8_t val);
+
+adxl_range_t m_current_range;
 //////////////////////////////////////////////////////////////////////////
 
 void
-adxl_init(void) {
+adxl_reset(void) {
   static uint8_t init_data[] = {
     0xfa, 0x00, //set activity threshold to 250 mg 0x20, 0x21 LOW then HIGH half
     0x00,       //set activity time to 0  0x22
@@ -71,14 +76,9 @@ adxl_init(void) {
     0b00010010  //adc disabled, no ext clock, low noise, no wake-up,
     //no autosleep, measurement mode 0x2d
   };
-  register int32_t i;
+  register int32_t i;  
 
-  /*spi0 config*/
-  SWM_PINASSIGN3 = 0x0dffffff;  //SPI0_CLK -> PIO0_13
-  SWM_PINASSIGN4 = 0xff000017 | //SPI0_MOSI -> PIO0_23
-                   0xff001100 | //SPI0_MISO -> PIO0_17
-                   0xff0c0000;  //SPI0_SSEL0 -> PIO0_12
-
+  m_current_range = adxlr_2g;
   SYSCON_PRESETCTRL &= ~(1 << 0); //reset SPI0
   SYSCON_SYSAHBCLKCTRL |= (1 << 11); //enable clock for SPI0
   SYSCON_PRESETCTRL |= (1 << 0); //take SPI0 out of reset
@@ -106,11 +106,9 @@ uint16_t read_register(uint8_t reg) {
   while(~SPI0_STAT & SPI_STAT_TXRDY) ;
   SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(15) |     //2 bytes
                   SPI_TXDATCTL_SSEL_N(0xe) |  //SSEL0 asserted
+                  SPI_TXDATCTL_RXIGNORE |
                   (uint16_t)((adxl_read_r << 8) | reg);
 
-  while(~SPI0_STAT & SPI_STAT_RXRDY) ;
-
-  rx_data = SPI0_RXDAT;
   while(~SPI0_STAT & SPI_STAT_TXRDY) ;
 
   SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(7) |      //1 byte
@@ -150,6 +148,7 @@ adxl_set_range(adxl_range_t range) {
   reg &= 0x3f;
   reg |= (range << 6);
   write_register(AR_FILTER_CTL, reg);
+  m_current_range = range;
 }
 //////////////////////////////////////////////////////////////////////////
 
@@ -162,27 +161,27 @@ adxl_set_odr(adxl_odr_t odr) {
 }
 //////////////////////////////////////////////////////////////////////////
 
-uint16_t
+int16_t
 adxl_X(void) {
   uint16_t res = read_register(AR_XDATA_H) << 8;
   res |= read_register(AR_XDATA_L);
-  return res & 0x0fff;
+  return res;
 }
 //////////////////////////////////////////////////////////////////////////
 
-uint16_t
+int16_t
 adxl_Y(void) {
   uint16_t res = read_register(AR_YDATA_H) << 8;
   res |= read_register(AR_YDATA_L);
-  return res & 0x0fff;
+  return res;
 }
 //////////////////////////////////////////////////////////////////////////
 
-uint16_t
+int16_t
 adxl_Z(void) {
   uint16_t res = read_register(AR_ZDATA_H) << 8;
   res |= read_register(AR_ZDATA_L);
-  return res & 0x0fff;
+  return res;
 }
 //////////////////////////////////////////////////////////////////////////
 
@@ -195,3 +194,14 @@ adxl_dev_sign() {
   return res;
 }
 //////////////////////////////////////////////////////////////////////////
+
+uint8_t
+adxl_check() {
+  return adxl_dev_sign() == ADXL363_SIGNATURE;
+}
+//////////////////////////////////////////////////////////////////////////
+
+adxl_range_t
+adxl_current_range() {
+  return m_current_range;
+}

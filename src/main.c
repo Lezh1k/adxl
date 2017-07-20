@@ -1,28 +1,32 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdlib.h>
+//#include <math.h>
 
 #include "lpc824.h"
 #include "lpc824_api.h"
 #include "adxl363.h"
 
-void config_pins();
+inline void config_pins();
 
 int
 main(void) {
 
-  uint16_t x, y, z;
+  int16_t x, y, z;
   uint32_t adxl_sign;
-  adxl_init();
-
+//  float ax, ay, az;
+  adxl_reset();
 
   while (1) {
     x = adxl_X();
     y = adxl_Y();
     z = adxl_Z();
-
+//    ax = asinf(x*1000.0f);
+//    ay = asinf(y*1000.0f);
+//    az = asinf(z*1000.0f);
     //todo send x, y, z
     adxl_sign = adxl_dev_sign();
+
   }
 
   return 0;
@@ -36,6 +40,12 @@ config_pins() {
   SWM_PINENABLE0 &= ~(1 << 7); // XTALOUT on pin PIO0_9
   SWM_PINENABLE0 &= ~(1 << 8); // RESET on pin PIO0_5
   SWM_PINENABLE0 &= ~(1 << 9); // CLKIN on pin PIO0_1
+
+  /*spi0 config / adxl*/
+  SWM_PINASSIGN3 = 0x0dffffff;  //SPI0_CLK -> PIO0_13
+  SWM_PINASSIGN4 = 0xff000017 | //SPI0_MOSI -> PIO0_23
+                   0xff001100 | //SPI0_MISO -> PIO0_17
+                   0xff0c0000;  //SPI0_SSEL0 -> PIO0_12
 
   /*uart0 config*/
 }

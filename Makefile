@@ -20,7 +20,7 @@ BIN_DIR = bin
 
 #device and program
 PRG = arm_adxl
-MMCU = -mcpu=cortex-m0 -mthumb 
+MMCU = -mcpu=cortex-m0 -mthumb -mfloat-abi=soft 
 OPTIMIZE = -O0 -g
 INCLUDES = -Iinclude -I$(ARM_TOOLCHAIN_PATH)arm-none-eabi/include 
 
