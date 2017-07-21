@@ -9,7 +9,8 @@ SIZE=$(ARM_TOOLCHAIN_PREFIX)size
 
 LIBSPATH = $(ARM_TOOLCHAIN_PATH)lib/gcc/arm-none-eabi/6.3.1/thumb
 LIBSPATH2 = $(ARM_TOOLCHAIN_PATH)arm-none-eabi/lib/thumb
-LIBS = -L$(LIBSPATH) -lgcc -L$(LIBSPATH2) -lm -L$(LIBSPATH2) -lc -L$(LIBSPATH2) -lnosys
+#LIBS = -L$(LIBSPATH) -lgcc -L$(LIBSPATH2) -lm -L$(LIBSPATH2) -lc -L$(LIBSPATH2) -lnosys
+LIBS = -lgcc -lm
 DEFS = -D__LPC82X__
 
 # Directories
@@ -25,7 +26,8 @@ OPTIMIZE = -O0 -g
 INCLUDES = -Iinclude -I$(ARM_TOOLCHAIN_PATH)arm-none-eabi/include 
 
 CFLAGS = $(INCLUDES) $(MMCU) $(OPTIMIZE) $(DEFS) -Wall 
-LDFLAGS = -T lpc824m201_linker_script.ld --cref -Map $(BIN_DIR)/$(PRG).map -nostartfiles -print-memory-usage
+#LDFLAGS = -T lpc824m201_linker_script.ld --cref -Map $(BIN_DIR)/$(PRG).map -nostartfiles -print-memory-usage
+LDFLAGS = -Wl,-T,lpc824m201_linker_script.ld -Wl,--cref -Wl,-Map,$(BIN_DIR)/$(PRG).map -nostartfiles -Wl,-print-memory-usage
 
 SOURCES = $(wildcard $(SRC_DIR)/*.c)
 OBJECTS = $(patsubst %,$(BUILD_DIR)/%.o, $(subst src/,,$(subst .c,,$(SOURCES))))
@@ -38,7 +40,7 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BIN_DIR)/$(PRG).elf: $(OBJECTS)
-	$(LD) $(LDFLAGS) -o $@ $^ $(LIBS)
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 $(BIN_DIR)/lst: $(BIN_DIR)/$(PRG).lst
 $(BIN_DIR)/%.lst: $(BIN_DIR)/%.elf

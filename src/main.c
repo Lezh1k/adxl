@@ -1,32 +1,65 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdlib.h>
-//#include <math.h>
 
 #include "lpc824.h"
 #include "lpc824_api.h"
+#include "lpc824_api_uart.h"
 #include "adxl363.h"
 
 inline void config_pins();
 
+#define F_CPU 12000000UL
+#define USART0_BAUD_RATE 9600
+
 int
 main(void) {
 
-  int16_t x, y, z;
-  uint32_t adxl_sign;
-//  float ax, ay, az;
+  static uint8_t ch_xyz[3] = {'x', 'y', 'z'};
+  int16_t xyz[3];
+  register int32_t i;
+
   adxl_reset();
 
-  while (1) {
-    x = adxl_X();
-    y = adxl_Y();
-    z = adxl_Z();
-//    ax = asinf(x*1000.0f);
-//    ay = asinf(y*1000.0f);
-//    az = asinf(z*1000.0f);
-    //todo send x, y, z
-    adxl_sign = adxl_dev_sign();
+  SYSCON_PRESETCTRL &= ~(1 << 3); //reset USART0
+  SYSCON_SYSAHBCLKCTRL |= (1 << 14); //enable clock for USART0
+  SYSCON_PRESETCTRL |= (1 << 3); //take USART0 out of reset
+  NVIC_ISER0 |= (1 << 3); //enable USART0 IRQ
 
+  SYSCON_UARTCLKDIV = 0x01; //uart clock divider is 1. result 12 MHz
+  USART0_BRG = F_CPU / (USART0_BAUD_RATE * 16); //o_O они убили кенни
+  USART0_CFG = 0x01; //enable usart0
+
+  USART0_CFG |=  (1 << 2); //8 bit Data length
+  USART0_CFG &= ~(1 << 4); //no parity
+  USART0_CFG &= ~(1 << 6); //1 stop bit
+  USART0_CFG |=  (1 << 9); //CTS Enable.
+  USART0_CFG &= ~(1 << 11); //asynchronous mode is select
+//  USART0_CFG |=  (1 << 19); //autoaddress
+  USART0_CFG |=  (1 << 20); //output enable select
+
+  while (1) {
+    xyz[0] = adxl_X();
+    xyz[1] = adxl_Y();
+    xyz[2] = adxl_Z();
+
+    for (i = 0; i < 3; ++i) {
+      while(~USART0_STAT & UART_STAT_TXRDY);
+      USART0_TXDAT = ch_xyz[i];
+      while(~USART0_STAT & UART_STAT_TXIDLE);
+
+      while(~USART0_STAT & UART_STAT_TXRDY);
+      USART0_TXDAT = (uint8_t) (xyz[i] >> 8);
+      while(~USART0_STAT & UART_STAT_TXIDLE);
+
+      while(~USART0_STAT & UART_STAT_TXRDY);
+      USART0_TXDAT = (uint8_t) (xyz[i] & 0x00ff);
+      while(~USART0_STAT & UART_STAT_TXIDLE);
+
+      while(~USART0_STAT & UART_STAT_TXRDY);
+      USART0_TXDAT = ch_xyz[i];
+      while(~USART0_STAT & UART_STAT_TXIDLE);
+    }
   }
 
   return 0;
@@ -48,6 +81,10 @@ config_pins() {
                    0xff0c0000;  //SPI0_SSEL0 -> PIO0_12
 
   /*uart0 config*/
+  SWM_PINASSIGN0 = (0x0b << 0)  | //U0_TXD -> PIO0_11
+                   (0x0a << 8)  | //U0_RXD -> PIO0_10
+                   (0x0e << 16) | //U0_RTS -> PIO0_14
+                   (0x0f << 24) ; //U0_DTS -> PIO0_15
 }
 
 void

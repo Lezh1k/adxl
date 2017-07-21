@@ -140,9 +140,9 @@ crt0(void) {
     *(dest++) = 0;
 
   // call C++ constructors
-  dest = &__init_array_start;
-  while (dest < &__init_array_end)
-    (*(void(**)(void)) dest++)();
+//  dest = &__init_array_start;
+//  while (dest < &__init_array_end)
+//    (*(void(**)(void)) dest++)();
 }
 //////////////////////////////////////////////////////////////////////////
 
