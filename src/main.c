@@ -10,7 +10,7 @@
 inline void config_pins();
 
 #define F_CPU 12000000UL
-#define USART0_BAUD_RATE 9600
+#define USART0_BAUD_RATE 19200
 
 int
 main(void) {
@@ -32,11 +32,11 @@ main(void) {
 
   USART0_CFG |=  (1 << 2); //8 bit Data length
   USART0_CFG &= ~(1 << 4); //no parity
-  USART0_CFG &= ~(1 << 6); //1 stop bit
-  USART0_CFG |=  (1 << 9); //CTS Enable.
+  USART0_CFG &= ~(1 << 6); //1 stop bit  
   USART0_CFG &= ~(1 << 11); //asynchronous mode is select
-//  USART0_CFG |=  (1 << 19); //autoaddress
-  USART0_CFG |=  (1 << 20); //output enable select
+  USART0_CFG |= (1 << 18); //Output Enable Turnaround time enable for RS-485 operation
+  USART0_CFG |= (1 << 20); //output enable select
+  USART0_CFG |= (1 << 21); //output enable polarity
 
   while (1) {
     xyz[0] = adxl_X();
@@ -83,8 +83,9 @@ config_pins() {
   /*uart0 config*/
   SWM_PINASSIGN0 = (0x0b << 0)  | //U0_TXD -> PIO0_11
                    (0x0a << 8)  | //U0_RXD -> PIO0_10
-                   (0x0e << 16) | //U0_RTS -> PIO0_14
-                   (0x0f << 24) ; //U0_DTS -> PIO0_15
+                   (0x0f << 16) | //U0_RTS -> PIO0_14 . RTS should be used as DE.
+                   (0xff << 24); //disable U0_DTS
+                   /*(0x0f << 24) ; //U0_DTS -> PIO0_15*/
 }
 
 void
