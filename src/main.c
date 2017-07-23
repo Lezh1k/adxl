@@ -44,6 +44,7 @@ main(void) {
     xyz[2] = adxl_Z();
 
     for (i = 0; i < 3; ++i) {
+      GPIO_B14 = 1;
       while(~USART0_STAT & UART_STAT_TXRDY);
       USART0_TXDAT = ch_xyz[i];
       while(~USART0_STAT & UART_STAT_TXIDLE);
@@ -59,6 +60,7 @@ main(void) {
       while(~USART0_STAT & UART_STAT_TXRDY);
       USART0_TXDAT = ch_xyz[i];
       while(~USART0_STAT & UART_STAT_TXIDLE);
+      GPIO_B14 = 0;
     }
   }
 
@@ -86,6 +88,8 @@ config_pins() {
                    (0x0f << 16) | //U0_RTS -> PIO0_14 . RTS should be used as DE.
                    (0xff << 24); //disable U0_DTS
                    /*(0x0f << 24) ; //U0_DTS -> PIO0_15*/
+
+  GPIO_DIR0 |= (1 << 14); //RE to output
 }
 
 void
