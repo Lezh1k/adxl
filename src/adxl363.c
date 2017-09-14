@@ -62,6 +62,14 @@ void write_register(uint8_t reg,
 adxl_range_t m_current_range;
 //////////////////////////////////////////////////////////////////////////
 
+void adxl_config_pins() {
+  SWM_PINASSIGN3 = 0x0dffffff;  //SPI0_CLK -> PIO0_13
+  SWM_PINASSIGN4 = 0xff000017 | //SPI0_MOSI -> PIO0_23
+                   0xff001100 | //SPI0_MISO -> PIO0_17
+                   0xff0c0000;  //SPI0_SSEL0 -> PIO0_12
+}
+//////////////////////////////////////////////////////////////////////////
+
 void
 adxl_reset(void) {
   static uint8_t init_data[] = {
@@ -72,13 +80,14 @@ adxl_reset(void) {
     0x00,       //disable activity/inactivity interrupts 0x27
     0x00, 0x00, //don't use FIFO, 0x28, 0x29
     0x00, 0x00, //no interrupts? map registers 0x2a, 0x2b
-    0b00010011, //+-2g, HALF_BW, no EXT_SAMPLE, 100Hz, 0x2c
-    0b00010010  //adc disabled, no ext clock, low noise, no wake-up,
+    0x13, //+-2g, HALF_BW, no EXT_SAMPLE, 100Hz, 0x2c
+    0x12  //adc disabled, no ext clock, low noise, no wake-up,
     //no autosleep, measurement mode 0x2d
   };
   register int32_t i;  
 
   m_current_range = adxlr_2g;
+  adxl_config_pins();
   SYSCON_PRESETCTRL &= ~(1 << 0); //reset SPI0
   SYSCON_SYSAHBCLKCTRL |= (1 << 11); //enable clock for SPI0
   SYSCON_PRESETCTRL |= (1 << 0); //take SPI0 out of reset
@@ -89,13 +98,13 @@ adxl_reset(void) {
   SPI0_CFG = SPI_CFG_ENABLE | SPI_CFG_MASTER ; //enable SPI0 master mode, CPHA = CPOL = 0
 
   write_register(AR_SOFT_RESET, 0x52);
-  for (i = 10000; --i;); //wait
+  for (i = 1000; --i;); //wait
 
   for (i = 0x20; i <= 0x2d; ++i) {
     write_register(i, init_data[i-0x20]);
   }
 
-  for (i = 10000; --i;); //wait
+  for (i = 1000; --i;); //wait
 }
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////

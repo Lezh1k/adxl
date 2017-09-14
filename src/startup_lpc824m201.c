@@ -6,15 +6,11 @@
 typedef void( *pFunc )( void );
 extern void SystemInit (void);
 extern int main(void);
-
-void ResetIntHandler(void);                             /* Reset Handler */
-
 extern uint32_t _etext, _data, _edata, _bss, _ebss, __stack_top;
 
 // Simple gcc- and g++-compatible C runtime init
 extern uint32_t __init_array_start;
 extern uint32_t __init_array_end;
-
 
 /*----------------------------------------------------------------------------
   User Initial Stack & Heap
@@ -36,6 +32,7 @@ extern uint32_t __init_array_end;
   Exception / Interrupt Handler
  *----------------------------------------------------------------------------*/
 /* Cortex-M0+ Processor Exceptions */
+void ResetIntHandler     (void); /* Reset Handler */
 void NMI_Handler         (void) {  while(1) ; }
 void HardFault_Handler   (void) {  while(1) ; }
 void SVC_Handler         (void) {  while(1) ; }
@@ -43,29 +40,35 @@ void PendSV_Handler      (void) {  while(1) ; }
 void SysTick_Handler     (void) {  while(1) ; }
 
 /* ARMCM0plus Specific Interrupts */
-void WDT_IRQHandler      (void) {  while(1) ; }
-void RTC_IRQHandler      (void) {  while(1) ; }
-void TIM0_IRQHandler     (void) {  while(1) ; }
-void TIM2_IRQHandler     (void) {  while(1) ; }
-void MCIA_IRQHandler     (void) {  while(1) ; }
-void MCIB_IRQHandler     (void) {  while(1) ; }
-void UART0_IRQHandler    (void) {  while(1) ; }
-void UART1_IRQHandler    (void) {  while(1) ; }
-void UART2_IRQHandler    (void) {  while(1) ; }
-void UART4_IRQHandler    (void) {  while(1) ; }
-void AACI_IRQHandler     (void) {  while(1) ; }
-void CLCD_IRQHandler     (void) {  while(1) ; }
-void ENET_IRQHandler     (void) {  while(1) ; }
-void USBDC_IRQHandler    (void) {  while(1) ; }
-void USBHC_IRQHandler    (void) {  while(1) ; }
-void CHLCD_IRQHandler    (void) {  while(1) ; }
-void FLEXRAY_IRQHandler  (void) {  while(1) ; }
-void CAN_IRQHandler      (void) {  while(1) ; }
-void LIN_IRQHandler      (void) {  while(1) ; }
-void I2C_IRQHandler      (void) {  while(1) ; }
-void CPU_CLCD_IRQHandler (void) {  while(1) ; }
-void UART3_IRQHandler    (void) {  while(1) ; }
-void SPI_IRQHandler      (void) {  while(1) ; }
+extern void SPI0_IRQHandler() ;                    // SPI0 controller
+extern void SPI1_IRQHandler() ;                    // SPI1 controller
+extern void UART0_IRQHandler() ;                   // UART0
+extern void UART1_IRQHandler() ;                   // UART1
+extern void UART2_IRQHandler() ;                   // UART2
+extern void I2C1_IRQHandler() ;                    // I2C1 controller
+extern void I2C0_IRQHandler() ;                    // I2C0 controller
+extern void SCT_IRQHandler() ;                     // Smart Counter Timer
+extern void MRT_IRQHandler() ;                     // Multi-Rate Timer
+extern void CMP_IRQHandler() ;                     // Comparator
+extern void WDT_IRQHandler() ;                     // PIO1 (0:11)
+extern void BOD_IRQHandler() ;                     // Brown Out Detect
+extern void FLASH_IRQHandler() ;                   // FLASH controller
+extern void WKT_IRQHandler() ;                     // Wakeup timer
+extern void ADC_SEQA_IRQHandler() ;                // ADC SEQA
+extern void ADC_SEQB_IRQHandler() ;                // ADC SEQB
+extern void ADC_THCMP_IRQHandler() ;               // ADC Threashold Compare
+extern void ADC_OVR_IRQHandler() ;                 // ADC Overrun
+extern void DMA_IRQHandler() ;                     // DMA controller
+extern void I2C2_IRQHandler() ;                    // I2C2 controller
+extern void I2C3_IRQHandler() ;                    // I2C3 controller
+extern void PININT0_IRQHandler() ;                 // PIO INT0
+extern void PININT1_IRQHandler() ;                 // PIO INT1
+extern void PININT2_IRQHandler() ;                 // PIO INT2
+extern void PININT3_IRQHandler() ;                 // PIO INT3
+extern void PININT4_IRQHandler() ;                 // PIO INT4
+extern void PININT5_IRQHandler() ;                 // PIO INT5
+extern void PININT6_IRQHandler() ;                 // PIO INT6
+extern void PININT7_IRQHandler() ;                 // PIO INT7
 
 extern void __valid_user_code_checksum() __attribute__ ((weak));
 /*----------------------------------------------------------------------------
@@ -80,7 +83,7 @@ const pFunc __Vectors[] __attribute__ ((section(".vectors"))) = {
   0,                                        /*      Reserved                  */
   0,                                        /*      Reserved                  */
   0,                                        /*      Reserved                  */
-  __valid_user_code_checksum,               /*      Reserved  ???             */
+  __valid_user_code_checksum,          /*      Reserved  ???             */
   0,                                        /*      Reserved                  */
   0,                                        /*      Reserved                  */
   0,                                        /*      Reserved                  */
@@ -90,38 +93,38 @@ const pFunc __Vectors[] __attribute__ ((section(".vectors"))) = {
   PendSV_Handler,                           /*      PendSV Handler            */
   SysTick_Handler,                          /*      SysTick Handler           */
   /* External interrupts */
-  WDT_IRQHandler,                           /*  0:  Watchdog Timer            */
-  RTC_IRQHandler,                           /*  1:  Real Time Clock           */
-  TIM0_IRQHandler,                          /*  2:  Timer0 / Timer1           */
-  TIM2_IRQHandler,                          /*  3:  Timer2 / Timer3           */
-  MCIA_IRQHandler,                          /*  4:  MCIa                      */
-  MCIB_IRQHandler,                          /*  5:  MCIb                      */
-  UART0_IRQHandler,                         /*  6:  UART0 - DUT FPGA          */
-  UART1_IRQHandler,                         /*  7:  UART1 - DUT FPGA          */
-  UART2_IRQHandler,                         /*  8:  UART2 - DUT FPGA          */
-  UART4_IRQHandler,                         /*  9:  UART4 - not connected     */
-  AACI_IRQHandler,                          /* 10: AACI / AC97                */
-  CLCD_IRQHandler,                          /* 11: CLCD Combined Interrupt    */
-  ENET_IRQHandler,                          /* 12: Ethernet                   */
-  USBDC_IRQHandler,                         /* 13: USB Device                 */
-  USBHC_IRQHandler,                         /* 14: USB Host Controller        */
-  CHLCD_IRQHandler,                         /* 15: Character LCD              */
-  FLEXRAY_IRQHandler,                       /* 16: Flexray                    */
-  CAN_IRQHandler,                           /* 17: CAN                        */
-  LIN_IRQHandler,                           /* 18: LIN                        */
-  I2C_IRQHandler,                           /* 19: I2C ADC/DAC                */
-  0,                                        /* 20: Reserved                   */
-  0,                                        /* 21: Reserved                   */
-  0,                                        /* 22: Reserved                   */
-  0,                                        /* 23: Reserved                   */
-  0,                                        /* 24: Reserved                   */
-  0,                                        /* 25: Reserved                   */
-  0,                                        /* 26: Reserved                   */
-  0,                                        /* 27: Reserved                   */
-  CPU_CLCD_IRQHandler,                      /* 28: Reserved - CPU FPGA CLCD   */
-  0,                                        /* 29: Reserved - CPU FPGA        */
-  UART3_IRQHandler,                         /* 30: UART3    - CPU FPGA        */
-  SPI_IRQHandler                            /* 31: SPI Touchscreen - CPU FPGA */
+  SPI0_IRQHandler,                    // SPI0 controller
+  SPI1_IRQHandler,                    // SPI1 controller
+  0,                                  // Reserved
+  UART0_IRQHandler,                   // UART0
+  UART1_IRQHandler,                   // UART1
+  UART2_IRQHandler,                   // UART2
+  0,                                  // Reserved
+  I2C1_IRQHandler,                    // I2C1 controller
+  I2C0_IRQHandler,                    // I2C0 controller
+  SCT_IRQHandler,                     // Smart Counter Timer
+  MRT_IRQHandler,                     // Multi-Rate Timer
+  CMP_IRQHandler,                     // Comparator
+  WDT_IRQHandler,                     // PIO1 (0:11)
+  BOD_IRQHandler,                     // Brown Out Detect
+  FLASH_IRQHandler,                   // FLASH controller
+  WKT_IRQHandler,                     // Wakeup timer
+  ADC_SEQA_IRQHandler,                // ADC SEQA
+  ADC_SEQB_IRQHandler,                // ADC SEQB
+  ADC_THCMP_IRQHandler,               // ADC Threashold Compare
+  ADC_OVR_IRQHandler,                 // ADC Overrun
+  DMA_IRQHandler,                     // DMA controller
+  I2C2_IRQHandler,                    // I2C2 controller
+  I2C3_IRQHandler,                    // I2C3 controller
+  0,                                  // Reserved
+  PININT0_IRQHandler,                 // PIO INT0
+  PININT1_IRQHandler,                 // PIO INT1
+  PININT2_IRQHandler,                 // PIO INT2
+  PININT3_IRQHandler,                 // PIO INT3
+  PININT4_IRQHandler,                 // PIO INT4
+  PININT5_IRQHandler,                 // PIO INT5
+  PININT6_IRQHandler,                 // PIO INT6
+  PININT7_IRQHandler,                 // PIO INT7
 };
 //////////////////////////////////////////////////////////////////////////
 
@@ -138,11 +141,6 @@ crt0(void) {
   // blank the bss section
   while (dest < &_ebss)
     *(dest++) = 0;
-
-  // call C++ constructors
-//  dest = &__init_array_start;
-//  while (dest < &__init_array_end)
-//    (*(void(**)(void)) dest++)();
 }
 //////////////////////////////////////////////////////////////////////////
 

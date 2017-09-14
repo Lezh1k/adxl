@@ -1,5 +1,4 @@
-ARM_TOOLCHAIN_PATH = /home/lezh1k/gcc-arm-none-eabi-6-2017-q2-update/
-ARM_TOOLCHAIN_PREFIX = $(ARM_TOOLCHAIN_PATH)bin/arm-none-eabi-
+ARM_TOOLCHAIN_PREFIX = arm-none-eabi-
 CC=$(ARM_TOOLCHAIN_PREFIX)gcc
 AS=$(ARM_TOOLCHAIN_PREFIX)as
 LD=$(ARM_TOOLCHAIN_PREFIX)ld
@@ -7,9 +6,6 @@ OBJDUMP=$(ARM_TOOLCHAIN_PREFIX)objdump
 OBJCOPY=$(ARM_TOOLCHAIN_PREFIX)objcopy
 SIZE=$(ARM_TOOLCHAIN_PREFIX)size
 
-LIBSPATH = $(ARM_TOOLCHAIN_PATH)lib/gcc/arm-none-eabi/6.3.1/thumb
-LIBSPATH2 = $(ARM_TOOLCHAIN_PATH)arm-none-eabi/lib/thumb
-#LIBS = -L$(LIBSPATH) -lgcc -L$(LIBSPATH2) -lm -L$(LIBSPATH2) -lc -L$(LIBSPATH2) -lnosys
 LIBS = -lgcc -lm
 DEFS = -D__LPC82X__
 
@@ -21,12 +17,11 @@ BIN_DIR = bin
 
 #device and program
 PRG = arm_adxl
-MMCU = -mcpu=cortex-m0 -mthumb -mfloat-abi=soft 
-OPTIMIZE = -O0 -g
-INCLUDES = -Iinclude -I$(ARM_TOOLCHAIN_PATH)arm-none-eabi/include 
+MMCU = -mcpu=cortex-m0plus -march=armv6-m -mthumb #-mfloat-abi=soft
+OPTIMIZE = -O0 -ggdb3
+INCLUDES = -Iinclude 
 
 CFLAGS = $(INCLUDES) $(MMCU) $(OPTIMIZE) $(DEFS) -Wall 
-#LDFLAGS = -T lpc824m201_linker_script.ld --cref -Map $(BIN_DIR)/$(PRG).map -nostartfiles -print-memory-usage
 LDFLAGS = -Wl,-T,lpc824m201_linker_script.ld -Wl,--cref -Wl,-Map,$(BIN_DIR)/$(PRG).map -nostartfiles -Wl,-print-memory-usage
 
 SOURCES = $(wildcard $(SRC_DIR)/*.c)
