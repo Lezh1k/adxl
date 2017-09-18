@@ -1,0 +1,5 @@
+h
+loadbin release\testTarget.bin, 0
+r
+g
+exit
