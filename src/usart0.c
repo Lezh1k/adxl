@@ -15,6 +15,7 @@ void UART0_IRQHandler(void) {
 /// no
 
 // лыварфыва
+// ываыва
 
 void
 usart0_init() {
