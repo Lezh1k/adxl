@@ -54,15 +54,20 @@ typedef enum adxl_cmd {
   adxl_read_fifo = 0x0d
 } adxl_cmd_t;
 //////////////////////////////////////////////////////////////////////////
-
-uint16_t read_register(uint8_t reg);
-void write_register(uint8_t reg,
-                    uint8_t val);
-
-adxl_range_t m_current_range;
+//////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-void adxl_config_pins() {
+static uint16_t read_register(uint8_t reg);
+static void write_register(uint8_t reg, uint8_t val);
+static adxl_range_t m_current_range;
+
+
+void I2C1_IRQHandler(void) {
+  while(1) ;
+}
+//////////////////////////////////////////////////////////////////////////
+
+static inline void adxl_config_pins() {
   SWM_PINASSIGN3 = 0x0dffffff;  //SPI0_CLK -> PIO0_13
   SWM_PINASSIGN4 = 0xff000017 | //SPI0_MOSI -> PIO0_23
                    0xff001100 | //SPI0_MISO -> PIO0_17
@@ -91,20 +96,17 @@ adxl_reset(void) {
   SYSCON_PRESETCTRL &= ~(1 << 0); //reset SPI0
   SYSCON_SYSAHBCLKCTRL |= (1 << 11); //enable clock for SPI0
   SYSCON_PRESETCTRL |= (1 << 0); //take SPI0 out of reset
-
-  NVIC_ISER0 |= (1 << 0); //enable SPI0 interrupt. why?
   SPI0_DLY = 0x00001009; //1 tick post and pre delay. 1 tick transaction delay.
   SPI0_DIV = 0x0018; //divider is 24. result is 0.5 MHz
   SPI0_CFG = SPI_CFG_ENABLE | SPI_CFG_MASTER ; //enable SPI0 master mode, CPHA = CPOL = 0
 
   write_register(AR_SOFT_RESET, 0x52);
-  for (i = 1000; --i;); //wait
-
-  for (i = 0x20; i <= 0x2d; ++i) {
+  for (i = 100; --i;); //wait
+  for (i = 0x20; i <= 0x2d; ++i)
     write_register(i, init_data[i-0x20]);
-  }
+  for (i = 100; --i;); //wait
 
-  for (i = 1000; --i;); //wait
+  NVIC_ISER0 |= (1 << 0); //enable SPI0 interrupt. why?
 }
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////

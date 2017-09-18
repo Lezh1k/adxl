@@ -7,13 +7,16 @@
 #include "usart0.h"
 
 static void config_pins();
+static void config_timer();
+
 /*interrupt vector*/
 void SPI0_IRQHandler(void) { while(1) ; }                    // SPI0 controller
 void SPI1_IRQHandler(void) { while(1) ; }                    // SPI1 controller
-void UART0_IRQHandler(void) { while(1) ; }                   // UART0
+//
+//void UART0_IRQHandler(void) - see in usart0.c
 void UART1_IRQHandler(void) { while(1) ; }                   // UART1
 void UART2_IRQHandler(void) { while(1) ; }                   // UART2
-void I2C1_IRQHandler(void) { while(1) ; }                    // I2C1 controller
+//void I2C1_IRQHandler(void) { while(1) ; }                    // I2C1 controller
 void I2C0_IRQHandler(void) { while(1) ; }                    // I2C0 controller
 
 void MRT_IRQHandler(void) { while(1) ; }                     // Multi-Rate Timer
@@ -43,9 +46,19 @@ void SCT_IRQHandler(void) { // Smart Counter Timer
   GPIO_B0 = ((on = !on) ? 0 : 1);
 }
 
+static inline void blink() {
+  uint16_t j;
+  for (j = 0x100000; --j;);
+  GPIO_B0 = ((on = !on) ? 0 : 1);
+  for (j = 0x100000; --j;);
+  GPIO_B0 = ((on = !on) ? 0 : 1);
+}
+//////////////////////////////////////////////////////////////////////////
+
 int
 main(void) {
 
+  enum {winSize = 4};
   static uint8_t ch_xyz[3] = {'x', 'y', 'z'};
   int16_t xyz[3];
   register int32_t i;
@@ -53,6 +66,35 @@ main(void) {
   adxl_reset();
   usart0_init();
 
+  xyz[0] = usart0_recv_sync(); //wait for start command
+  while (1) {
+    xyz[0] = xyz[1] = xyz[2] = 0;
+
+    for (i = 0; i < winSize; ++i) {
+      xyz[0] += adxl_X() / winSize;
+      xyz[1] += adxl_Y() / winSize;
+      xyz[2] += adxl_Z() / winSize;
+    }
+
+    for (i = 0; i < 3; ++i) {      
+      usart0_send_sync(ch_xyz[i]);
+      usart0_send_sync((uint8_t) (xyz[i] >> 8));
+      usart0_send_sync((uint8_t) (xyz[i] & 0x00ff));
+      usart0_send_sync('\n');
+    }
+  }
+  return 0;
+}
+//////////////////////////////////////////////////////////////////////////
+
+void
+config_pins() {
+  GPIO_DIR0 |= (1 << 0); //PIO0_0 to output
+}
+//////////////////////////////////////////////////////////////////////////
+
+void
+config_timer() {
   SYSCON_PRESETCTRL &= ~(1 << 8); //reset SCT timer
   SYSCON_SYSAHBCLKCTRL |= (1 << 8); //enable clock for SCT timer
   SYSCON_PRESETCTRL |= (1 << 8); //take SCT timer out of reset
@@ -80,50 +122,33 @@ main(void) {
 
 //  SCTIMER_CTRL &= ~(1 << 2);
 //  SCTIMER_CTRL &= ~(1 << 18); //out of halt SCT timer
-
-  while (1) {
-    xyz[0] = adxl_X();
-    xyz[1] = adxl_Y();
-    xyz[2] = adxl_Z();
-
-    for (i = 0; i < 3; ++i) {
-      xyz[i]++;
-      usart0_send_sync(ch_xyz[i]);
-      usart0_send_sync((uint8_t) (xyz[i] >> 8));
-      usart0_send_sync((uint8_t) (xyz[i] & 0x00ff));
-      usart0_send_sync('\n');
-    }
-
-    GPIO_B0 = ((on = !on) ? 0 : 1);
-    for (i = 0x100000; --i;) ;
-    GPIO_B0 = ((on = !on) ? 0 : 1);
-    for (i = 0x100000; --i;) ;
-//    asm(" wfi ");
-  }
-
-  return 0;
 }
 //////////////////////////////////////////////////////////////////////////
 
 void
-config_pins() {
-  /*base config*/
+SystemInit (void) {
+  /*in the IOCON block, remove the pull-up and pull-down resistors in the IOCON
+registers for pins PIO0_8 and PIO0_9.*/
+  IOCON_PIO0_8 &= (0x03 << 3); //no pull-up and pull-down
+  IOCON_PIO0_9 &= (0x03 << 3); //no pull-up and pull-down
+
+  /*In the switch matrix block, enable the 1-bit functions for XTALIN and XTALOUT.*/
   SWM_PINENABLE0 &= ~(1 << 6); // XTALIN on pin PIO0_8
   SWM_PINENABLE0 &= ~(1 << 7); // XTALOUT on pin PIO0_9
   SWM_PINENABLE0 &= ~(1 << 8); // RESET on pin PIO0_5
-  SWM_PINENABLE0 &= ~(1 << 9); // CLKIN on pin PIO0_1  
-  GPIO_DIR0 |= (1 << 0); //RE to output PIO0_0 to output
-}
+  SWM_PINENABLE0 &= ~(1 << 9); // CLKIN on pin PIO0_1
 
-void
-SystemInit (void) {
-  SYSCON_MAINCLKSEL   = 0x00; //main clock source = IRC
+  /* In the SYSOSCCTRL register, disable the BYPASS bit and select the oscillator
+  frequency range according to the desired oscillator output clock.*/
+  SYSCON_SYSOSCCTRL &= ~(1 << 0); //disable BYPASS
+  SYSCON_SYSOSCCTRL &= ~(1 << 1); //0 <= FREQRANGE <= 20MHz
   SYSCON_SYSAHBCLKDIV = 0x01; //divider 1
   SYSCON_MAINCLKUEN   = 0x01; //update main clock source
 
   SYSCON_CLKOUTSEL = 0x00; // select main clock as clock out source
   SYSCON_CLKOUTDIV = 0x01; // enable divider
   SYSCON_CLKOUTUEN = 0x01; // update clockout source
+
   config_pins();
 }
 //////////////////////////////////////////////////////////////////////////
