@@ -65,3 +65,4 @@ mrproper:
 
 program:
 	@./jlink_lpc824m201.sh
+#ttt
