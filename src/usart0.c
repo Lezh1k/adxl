@@ -12,7 +12,7 @@ void UART0_IRQHandler(void) {
 
 
 /// лалаллала
-
+/// no
 void
 usart0_init() {
   SWM_PINASSIGN0 = (0x0e << 0)  | //U0_TXD -> PIO0_14
