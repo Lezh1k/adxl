@@ -4,7 +4,7 @@
   Exception / Interrupt Handler Function Prototype
  *----------------------------------------------------------------------------*/
 typedef void( *pFunc )( void );
-extern void SystemInit (void);
+extern void systemInit (void);
 extern int main(void);
 extern uint32_t _etext, _data, _edata, _bss, _ebss, __stack_top;
 
@@ -150,7 +150,7 @@ crt0(void) {
 __attribute__ ((section(".after_vectors"), naked))
 void
 ResetIntHandler(void) {
-  SystemInit();
+  systemInit();
   crt0();
   main();
   while (1) ; // hang if main returns

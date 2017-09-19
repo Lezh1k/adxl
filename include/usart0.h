@@ -3,8 +3,10 @@
 
 #include <stdint.h>
 
-void usart0_init(void);
-void usart0_send_sync(uint8_t sb);
-uint8_t usart0_recv_sync(void);
+void usart0Init(void);
+void usart0SendSync(uint8_t sb);
+uint8_t usart0RecvSync(void);
+
+void usart0SendArr(uint8_t* data, uint16_t len);
 
 #endif  // USART0_H

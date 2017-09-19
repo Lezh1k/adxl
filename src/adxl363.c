@@ -1,6 +1,24 @@
 #include "adxl363.h"
 #include "lpc824.h"
-#include "lpc824_api_spi.h"
+
+#define SPI_CFG_ENABLE (1)
+#define SPI_CFG_MASTER (1 << 2)
+#define SPI_CFG_LSBF (1 << 3)
+
+#define SPI_STAT_RXRDY (0x1)
+#define SPI_STAT_TXRDY (0x2)
+#define SPI_STAT_MSTIDLE (0x100)
+
+#define SPI_TXDATCTL_SSEL_N(s) ((s) << 16)
+#define SPI_TXDATCTL_EOT (1 << 20)
+#define SPI_TXDATCTL_EOF (1 << 21)
+#define SPI_TXDATCTL_RXIGNORE (1 << 22)
+#define SPI_TXDATCTL_FLEN(l) ((l) << 24)
+
+#define SPI_DLY_PREDELAY(d) ((d) << 0)
+#define SPI_DLY_POSTDELAY(d) ((d) << 4)
+#define SPI_DLY_FRAMEDELAY(d) ((d) << 8)
+#define SPI_DLY_INTERDELAY(d) ((d) << 12)
 
 //first 3 registers
 #define ADXL363_SIGNATURE 0x00ad1df3
