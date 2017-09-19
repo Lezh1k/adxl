@@ -43,20 +43,21 @@ static void rxReady();
 static void txIdle();
 static void txReady();
 
-void UART0_IRQHandler(void) {
-  static void (*handlers[])() = {rxReady, NULL, txReady, txIdle};
-  uint32_t intStatus = USART0_INTSTAT;
-  register uint32_t i;
-  for (i = 0; i < sizeof(handlers) / sizeof(handlers[0]); ++i) {
-    if ((intStatus & (1 << i)) && handlers[i])
-      handlers[i]();
-  }
+void UART0_IRQHandler(void) {  
+  register uint32_t intStatus = USART0_INTSTAT;
+  if (intStatus & (1 << 0))
+    rxReady();
+  if (intStatus & (1 << 2))
+    txReady();
+  if (intStatus & (1 << 3))
+    txIdle();
 }
 //////////////////////////////////////////////////////////////////////////
 
 #define RECV_BUFF_LEN 257
 static uint8_t  recvBuff[RECV_BUFF_LEN] = {0};
 static volatile uint16_t recvIx = 0;
+static uint16_t intRecvIx = 0;
 static volatile uint8_t halfSymbolIdleCount = 0;
 
 void MRT_IRQHandler(void) {
@@ -64,19 +65,28 @@ void MRT_IRQHandler(void) {
   if (halfSymbolIdleCount++ < 35) return; //todo check this interval. should be 7-8 . works with 35. why?
   disableRxReady();
   stopMrtTimer0Imm();
+
+  SetSoftwareInt(SINT_USART0_MB_TSX);
+  intRecvIx = recvIx;
+}
+//////////////////////////////////////////////////////////////////////////
+
+void usart0MbTsxHandle() {
+  ClrSoftwareInt(SINT_USART0_MB_TSX);
   mb_handle_request(recvBuff, recvIx); //todo check result
   halfSymbolIdleCount = 0;
   recvIx = 0;
   enableRxReady();
 }
-//////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
 
 void rxReady() {
   stopMrtTimer0Imm();
-  recvBuff[recvIx++] = USART0_RXDAT;
+  uint16_t tmpRecvIx = recvIx;
+  recvBuff[tmpRecvIx++] = USART0_RXDAT;
   halfSymbolIdleCount = 0;
   startMrtTimer0(HALF_BOD_TICK_COUNT);
-  if (recvIx >= RECV_BUFF_LEN) {
+  if (tmpRecvIx >= RECV_BUFF_LEN) {
     ; //todo register overflow
     recvIx = 0;
     stopMrtTimer0Imm();
@@ -97,8 +107,7 @@ void txIdle() {
 //////////////////////////////////////////////////////////////////////////
 
 
-void
-usart0Init() {
+void usart0Init() {
   SWM_PINASSIGN0 = (0x0e << 0)  | //U0_TXD -> PIO0_14
                    (0x0b << 8)  | //U0_RXD -> PIO0_11
                    (0x0f << 16) | //U0_RTS -> PIO0_15 . RTS should be used as DE.
@@ -133,16 +142,14 @@ usart0Init() {
 }
 //////////////////////////////////////////////////////////////////////////
 
-void
-usart0SendSync(uint8_t sb) {
+void usart0SendSync(uint8_t sb) {
   while(~USART0_STAT & UART_STAT_TXRDY);
   USART0_TXDAT = sb;
   while(~USART0_STAT & UART_STAT_TXIDLE);
 }
 //////////////////////////////////////////////////////////////////////////
 
-uint8_t
-usart0RecvSync() {
+uint8_t usart0RecvSync() {
   uint8_t sb = 0;
   while(~USART0_STAT & UART_STAT_RXRDY);
   sb = USART0_RXDAT;
@@ -151,8 +158,7 @@ usart0RecvSync() {
 }
 //////////////////////////////////////////////////////////////////////////
 
-void
-configMrt0() {
+void configMrt0() {
   SYSCON_PRESETCTRL &= ~(1 << 7); //reset MRT
   SYSCON_SYSAHBCLKCTRL |= (1 << 10); //enable clock for MRT
   SYSCON_PRESETCTRL |= (1 << 7); //take MRT out of reset
@@ -162,8 +168,7 @@ configMrt0() {
 }
 //////////////////////////////////////////////////////////////////////////
 
-void
-usart0SendArr(uint8_t *data, uint16_t len) {
+void usart0SendArr(uint8_t *data, uint16_t len) {
   disableRxReady();
   while(len--)
     usart0SendSync(*(data++));
