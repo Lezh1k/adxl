@@ -1,0 +1,174 @@
+
+POSITAL
+ACS80 SC
+SW01.86 HW05 R01
+B2 O2 M256 PtX0 PtY0
+S#0000000000
+
+X=-08.44;Y=+59.57
+X=-09.75;Y=+57.14
+X=-10.35;Y=+57.54
+X=-10.51;Y=+58.29
+X=-10.68;Y=+59.26
+X=-10.28;Y=+58.57
+X=-10.32;Y=+58.13
+X=-10.22;Y=+58.29
+X=-10.36;Y=+57.01
+X=-10.17;Y=+58.12
+X=-10.71;Y=+57.56
+X=-10.93;Y=+58.15
+X=-10.88;Y=+58.16
+X=-10.94;Y=+57.91
+X=-11.11;Y=+57.67
+X=-11.14;Y=+58.04
+X=-11.25;Y=+57.80
+X=-11.26;Y=+57.76
+X=-11.46;Y=+57.57
+X=-11.26;Y=+57.68
+X=-11.22;Y=+57.09
+X=-11.19;Y=+58.30
+X=-11.13;Y=+57.69
+X=-10.89;Y=+57.39
+X=-10.85;Y=+57.10
+X=-10.78;Y=+55.46
+X=-10.79;Y=+56.72
+X=-12.81;Y=+60.47
+X=-15.74;Y=+62.44
+X=-14.95;Y=+58.03
+X=-12.21;Y=+54.13
+X=-12.52;Y=+54.36
+X=-13.10;Y=+54.83
+X=-13.62;Y=+56.85
+X=-13.93;Y=+57.18
+X=-13.91;Y=+55.25
+X=-13.43;Y=+54.27
+X=-13.78;Y=+54.82
+X=-13.97;Y=+54.37
+X=-13.18;Y=+54.71
+X=-13.66;Y=+55.91
+X=-15.09;Y=+58.41
+X=-15.95;Y=+57.57
+X=-16.00;Y=+58.84
+X=-15.78;Y=+59.91
+X=-14.99;Y=+62.23
+X=-14.49;Y=+62.25
+X=-14.14;Y=+64.33
+X=-14.61;Y=+64.25
+X=-15.37;Y=+66.23
+X=-15.24;Y=+68.71
+X=-14.18;Y=+69.27
+X=-12.97;Y=+70.36
+X=-12.26;Y=+71.67
+X=-11.83;Y=+75.78
+X=-11.72;Y=+77.20
+X=-11.18;Y=+79.01
+X=-09.76;Y=+78.15
+X=-09.11;Y=+80.58
+X=-08.95;Y=+83.38
+X=-08.60;Y=-90.00
+X=-08.36;Y=-90.00
+X=-07.39;Y=+82.00
+X=-07.14;Y=+81.29
+X=-06.27;Y=+85.38
+X=-08.03;Y=+83.17
+X=-07.10;Y=-90.00
+X=-06.02;Y=-90.00
+X=-05.94;Y=+85.26
+X=-05.68;Y=-90.00
+X=-04.83;Y=-90.00
+X=-03.76;Y=+85.24
+X=-02.24;Y=-90.00
+X=-00.27;Y=+82.41
+X=+01.64;Y=+84.67
+X=+01.91;Y=-90.00
+X=+02.19;Y=-90.00
+X=+02.15;Y=-90.00
+X=+02.63;Y=-90.00
+X=+02.65;Y=+85.14
+X=+02.53;Y=-90.00
+X=+02.36;Y=-90.00
+X=+02.63;Y=-90.00
+X=+03.10;Y=+84.71
+X=+03.29;Y=+83.46
+X=+02.96;Y=+84.73
+X=+02.53;Y=-90.00
+X=+02.32;Y=-90.00
+X=+02.38;Y=-90.00
+X=+02.50;Y=+85.04
+X=+02.49;Y=-90.00
+X=+02.48;Y=-90.00
+X=+02.61;Y=-90.00
+X=+02.92;Y=-90.00
+X=+03.20;Y=+83.85
+X=+03.20;Y=+83.36
+X=+02.99;Y=+85.20
+X=+02.67;Y=-90.00
+X=+02.47;Y=-90.00
+X=+02.45;Y=-90.00
+X=+02.54;Y=+84.97
+X=+02.60;Y=-90.00
+X=+02.62;Y=-90.00
+X=+02.73;Y=-90.00
+X=+03.03;Y=+85.19
+X=+03.25;Y=+83.53
+X=+03.19;Y=+83.81
+ACS:Type "exit"<CR> to return to measurement mode
+ACS>ACS>ACS>ACS>ACS>Command not recognized.
+ERROR
+ACS>ACS:ACCELENS commands
+ACS:exit     - leave config mode
+ACS:help     - list command and command description
+ACS:*idn     - report identity and versions
+ACS:*rst     - software reset
+ACS:info     - parameter info
+ACS:period   - set measurement period (0=disable)
+ACS:setorg   - set origin at current position
+ACS:clrorg   - set origin at factory default position
+ACS:setmax   - set maximum U/I at current position
+ACS:clrmax   - set maximum U/I at default position
+ACS:teach    - analog output teach mode (0=disable)
+ACS:read     - read the current angle value
+ACS:baud     - set new baudrate, activates immediately
+ACS:filter   - set averaging filter length (0=disable)
+ACS:compl    - set the counting direction (1=Inverted, 0=Standard, 2=SET2 active)
+ACS:restore  - restore factory settings, requires save
+ACS:save     - save settings to EEPROM
+ACS:Add "?" to any command to query current state
+ACS:Example: "period?" reports current measurement period
+OK
+ACS>Preset/Compl mode.
+0
+
+OK
+ACS>Config exiting, starting measurement...
+OK
+X=+03.15;Y=+84.46
+X=+03.14;Y=+84.48
+X=+03.14;Y=+84.66
+X=+03.15;Y=+84.48
+X=+03.12;Y=+84.27
+X=+03.12;Y=+84.41
+X=+03.14;Y=+84.62
+X=+03.15;Y=+84.53
+X=+03.15;Y=+84.35
+X=+03.16;Y=+84.35
+X=+03.16;Y=+84.59
+X=+03.15;Y=+84.48
+X=+03.15;Y=+84.35
+X=+03.12;Y=+84.46
+X=+03.12;Y=+84.67
+X=+03.12;Y=+84.41
+X=+03.15;Y=+84.37
+X=+03.17;Y=+84.67
+X=+03.17;Y=+84.07
+X=+03.19;Y=+84.10
+X=+03.18;Y=+84.41
+X=+03.19;Y=+85.08
+X=+03.17;Y=+84.50
+X=+03.18;Y=+84.05
+X=+03.19;Y=+84.37
+X=+03.17;Y=+84.44
+X=+03.15;Y=+84.35
+X=+03.15;Y=+84.50
+X=+03.18;Y=+84.71
+X
