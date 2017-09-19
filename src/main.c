@@ -49,7 +49,9 @@ typedef enum adxl_holding_settings{
   s_win_size,
   s_count
 }adxl_holding_settings_t;
+
 #define DEFAULT_WINDOW_SIZE 4
+#define MAX_WINDOW_SIZE 32
 
 static uint8_t coilsBuff[24] = {0};
 static uint8_t inputDiscreteBuff[24] = {0};
@@ -59,7 +61,18 @@ static mb_client_device_t m_device;
 
 int
 main(void) {  
+  enum {irX = 0, irY, irZ};
   register uint8_t i;
+  register uint8_t oldRange = holdingRegisters[s_range];
+  register uint8_t oldOdr = holdingRegisters[s_odr];
+  register uint8_t oldWinSize = holdingRegisters[s_win_size];
+  int16_t xBuff[MAX_WINDOW_SIZE];
+  int16_t yBuff[MAX_WINDOW_SIZE];
+  int16_t zBuff[MAX_WINDOW_SIZE];
+  int32_t xSum, ySum, zSum;
+
+  for (i = 0; i < MAX_WINDOW_SIZE; ++i)
+    xBuff[i] = yBuff[i] = zBuff[i] = 0;
 
   m_device.address = 2;
   m_device.coilsMap.startAddr = 0;
@@ -82,12 +95,34 @@ main(void) {
 
   mb_init(&m_device);
   while (1) {
-    inputRegisters[0] = inputRegisters[1] = inputRegisters[2] = 0;
-    for (i = 0; i < holdingRegisters[s_win_size]; ++i) {
-      inputRegisters[0] += adxl_X() / holdingRegisters[s_win_size];
-      inputRegisters[1] += adxl_Y() / holdingRegisters[s_win_size];
-      inputRegisters[2] += adxl_Z() / holdingRegisters[s_win_size];
+
+    if (oldRange != holdingRegisters[s_range]) {
+      adxl_set_range(holdingRegisters[s_range]);
+      oldRange = holdingRegisters[s_range];
     }
+
+    if (oldOdr != holdingRegisters[s_odr]) {
+      adxl_set_odr(holdingRegisters[s_odr]);
+      oldOdr = holdingRegisters[s_odr];
+    }
+
+    if (oldWinSize != holdingRegisters[s_win_size]) {
+      if (holdingRegisters[s_win_size] > MAX_WINDOW_SIZE)
+        holdingRegisters[s_win_size] = MAX_WINDOW_SIZE;
+      oldWinSize = holdingRegisters[s_win_size];
+    }
+
+    inputRegisters[irX] = inputRegisters[irY] = inputRegisters[irZ] = 0;
+    xSum = ySum = zSum = 0;
+    for (i = 0; i < oldWinSize; ++i) {
+      xSum += adxl_X();
+      ySum += adxl_Y();
+      zSum += adxl_Z();
+    }
+
+    inputRegisters[irX] = xSum / oldWinSize;
+    inputRegisters[irY] = ySum / oldWinSize;
+    inputRegisters[irZ] = zSum / oldWinSize;
   }
   return 0;
 }
