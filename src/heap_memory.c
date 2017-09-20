@@ -58,7 +58,7 @@ hm_free(memory_t p) {
     next = (mem_tag_t*) (p + mem_tag_size(((mem_tag_t*)p)->bit_and_size) + sizeof(mem_tag_t));
 
     if (!is_block_allocated(((mem_tag_t*)p)->bit_and_size)) {
-      if ((uint64_t)next >= (memory_t)g_heap_end) break;
+      if ((memory_t)next >= (memory_t)g_heap_end) break;
 
       if (!is_block_allocated(next->bit_and_size)) {
         ((mem_tag_t*)p)->bit_and_size += next->bit_and_size + sizeof(mem_tag_t);

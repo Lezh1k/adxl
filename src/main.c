@@ -7,17 +7,19 @@
 #include "usart0.h"
 #include "modbus_rtu_client.h"
 #include "heap_memory.h"
+#include "commons.h"
+//#include "armuart.h"
 
 static void configPins();
 
 /*interrupt vector*/
-void SPI0_IRQHandler(void) { while(1) ; }                    // SPI0 controller
+//void SPI0_IRQHandler(void) { while(1) ; }                    // SPI0 controller
 void SPI1_IRQHandler(void) { while(1) ; }                    // SPI1 controller
 //
 //void UART0_IRQHandler(void) - see in usart0.c
 void UART1_IRQHandler(void) { while(1) ; }                   // UART1
 void UART2_IRQHandler(void) { while(1) ; }                   // UART2
-//void I2C1_IRQHandler(void) { while(1) ; }                    // I2C1 controller
+void I2C1_IRQHandler(void) { while(1) ;}
 void I2C0_IRQHandler(void) { while(1) ; }                    // I2C0 controller
 
 void SCT_IRQHandler(void) { while(1); }                       // Smart Counter Timer
@@ -43,36 +45,41 @@ void PININT6_IRQHandler(void) { while(1) ; }                 // PIO INT6
 void PININT7_IRQHandler(void) { while(1) ; }                 // PIO INT7
 //////////////////////////////////////////////////////////////////////////
 
+#define MAGIC0 0xabcd
+#define MAGIC1 0x9876
+
 typedef enum adxl_holding_settings{
   s_range = 0,
   s_odr,
   s_win_size,
+  s_magic0,
+  s_magic1,
   s_count
 }adxl_holding_settings_t;
 
-#define DEFAULT_WINDOW_SIZE 4
+#define DEFAULT_WINDOW_SIZE 1
 #define MAX_WINDOW_SIZE 32
+#define RTU_MAX_SIZE 256
 
 static uint8_t coilsBuff[24] = {0};
 static uint8_t inputDiscreteBuff[24] = {0};
-static uint16_t inputRegisters[256] = {0};
-static uint16_t holdingRegisters[s_count] = {adxlr_2g, odr_100, DEFAULT_WINDOW_SIZE};
+static uint16_t inputRegisters[3] = {0}; //X, Y, Z
+static uint16_t holdingRegisters[s_count] = {adxlr_2g, odr_100, DEFAULT_WINDOW_SIZE, 0xff, 0xff};
 static mb_client_device_t m_device;
+
+
+//#define ROM_DRIVER_BASE (0x1FFF1FF8UL)
+//ROM_DIV_API_T *ROMDiv = (ROM_DIV_API_T *)(ROM_DRIVER_BASE + 0x10);
 
 int
 main(void) {  
-  enum {irX = 0, irY, irZ};
-  register uint8_t i;
-  register uint8_t oldRange = holdingRegisters[s_range];
-  register uint8_t oldOdr = holdingRegisters[s_odr];
-  register uint8_t oldWinSize = holdingRegisters[s_win_size];
-  int16_t xBuff[MAX_WINDOW_SIZE];
-  int16_t yBuff[MAX_WINDOW_SIZE];
-  int16_t zBuff[MAX_WINDOW_SIZE];
-  int32_t xSum, ySum, zSum;
+  enum {irX = 0, irY, irZ};  
+  register uint8_t currentAdxlRange = holdingRegisters[s_range];
+  register uint8_t currentOdr = holdingRegisters[s_odr];
 
-  for (i = 0; i < MAX_WINDOW_SIZE; ++i)
-    xBuff[i] = yBuff[i] = zBuff[i] = 0;
+  int32_t currentWinSize = holdingRegisters[s_win_size];
+  int32_t xSum, ySum, zSum;
+  uint32_t xWS, yWS, zWS;
 
   m_device.address = 2;
   m_device.coilsMap.startAddr = 0;
@@ -90,39 +97,65 @@ main(void) {
   m_device.tp_send = usart0SendArr;
 
   hm_init();
-  adxl_reset();
+  adxlReset();
   usart0Init();
 
+  xWS = yWS = zWS = currentWinSize;
+  xSum = ySum = zSum = 0;
+
   mb_init(&m_device);
+
   while (1) {
-
-    if (oldRange != holdingRegisters[s_range]) {
-      adxl_set_range(holdingRegisters[s_range]);
-      oldRange = holdingRegisters[s_range];
+    if (currentAdxlRange != holdingRegisters[s_range]) {
+      adxlSetRange(holdingRegisters[s_range]);
+      currentAdxlRange = holdingRegisters[s_range];
     }
 
-    if (oldOdr != holdingRegisters[s_odr]) {
-      adxl_set_odr(holdingRegisters[s_odr]);
-      oldOdr = holdingRegisters[s_odr];
+    if (currentOdr != holdingRegisters[s_odr]) {
+      adxlSetOdr(holdingRegisters[s_odr]);
+      currentOdr = holdingRegisters[s_odr];
     }
 
-    if (oldWinSize != holdingRegisters[s_win_size]) {
+    if (currentWinSize != holdingRegisters[s_win_size]) {
       if (holdingRegisters[s_win_size] > MAX_WINDOW_SIZE)
         holdingRegisters[s_win_size] = MAX_WINDOW_SIZE;
-      oldWinSize = holdingRegisters[s_win_size];
+      currentWinSize = holdingRegisters[s_win_size];
     }
 
-    inputRegisters[irX] = inputRegisters[irY] = inputRegisters[irZ] = 0;
-    xSum = ySum = zSum = 0;
-    for (i = 0; i < oldWinSize; ++i) {
+    if (SoftwareInterruptsFlag & SINT_ADXL_X_UPDATED) {
+      ClrSoftwareInt(SINT_ADXL_X_UPDATED);
       xSum += adxl_X();
-      ySum += adxl_Y();
-      zSum += adxl_Z();
+      if (--xWS == 0) { //need to save this value in input register
+        inputRegisters[irX] = LPC_DIV_API->sidiv(xSum, currentWinSize);
+        xWS = currentWinSize;
+        xSum = 0;
+      }
     }
 
-    inputRegisters[irX] = xSum / oldWinSize;
-    inputRegisters[irY] = ySum / oldWinSize;
-    inputRegisters[irZ] = zSum / oldWinSize;
+    if (SoftwareInterruptsFlag & SINT_ADXL_Y_UPDATED) {
+      ClrSoftwareInt(SINT_ADXL_Y_UPDATED);
+      ySum += adxl_Y();
+      if (--yWS == 0) { //need to save this value in input register
+        inputRegisters[irY] = LPC_DIV_API->sidiv(ySum, currentWinSize);
+        yWS = currentWinSize;
+        ySum = 0;
+      }
+    }
+
+    if (SoftwareInterruptsFlag & SINT_ADXL_Z_UPDATED) {
+      ClrSoftwareInt(SINT_ADXL_Z_UPDATED);
+      zSum += adxl_Z();
+      if (--zWS == 0) { //need to save this value in input register
+        inputRegisters[irZ] = LPC_DIV_API->sidiv(zSum, currentWinSize);
+        zWS = currentWinSize;
+        zSum = 0;
+      }
+    }
+
+    if (SoftwareInterruptsFlag & SINT_USART0_MB_TSX) {
+      ClrSoftwareInt(SINT_USART0_MB_TSX);
+      usart0MbTsxHandle();
+    }
   }
   return 0;
 }
@@ -133,8 +166,6 @@ configPins() {
   GPIO_DIR0 |= (1 << 0); //PIO0_0 to output
 }
 //////////////////////////////////////////////////////////////////////////
-
-
 
 void
 systemInit (void) {

@@ -65,7 +65,6 @@ void MRT_IRQHandler(void) {
   if (halfSymbolIdleCount++ < 35) return; //todo check this interval. should be 7-8 . works with 35. why?
   disableRxReady();
   stopMrtTimer0Imm();
-
   SetSoftwareInt(SINT_USART0_MB_TSX);
   intRecvIx = recvIx;
 }
@@ -73,9 +72,9 @@ void MRT_IRQHandler(void) {
 
 void usart0MbTsxHandle() {
   ClrSoftwareInt(SINT_USART0_MB_TSX);
-  mb_handle_request(recvBuff, recvIx); //todo check result
+  mb_handle_request(recvBuff, intRecvIx); //todo check result
   halfSymbolIdleCount = 0;
-  recvIx = 0;
+  intRecvIx = recvIx = 0;
   enableRxReady();
 }
 ////////////////////////////////////////////////////////////////////////////
@@ -86,9 +85,10 @@ void rxReady() {
   recvBuff[tmpRecvIx++] = USART0_RXDAT;
   halfSymbolIdleCount = 0;
   startMrtTimer0(HALF_BOD_TICK_COUNT);
+  recvIx = tmpRecvIx;
   if (tmpRecvIx >= RECV_BUFF_LEN) {
     ; //todo register overflow
-    recvIx = 0;
+    intRecvIx = recvIx = 0;
     stopMrtTimer0Imm();
     return;
   }
