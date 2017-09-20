@@ -57,38 +57,35 @@ void UART0_IRQHandler(void) {
 #define RECV_BUFF_LEN 257
 static uint8_t  recvBuff[RECV_BUFF_LEN] = {0};
 static volatile uint16_t recvIx = 0;
-static uint16_t intRecvIx = 0;
+static volatile uint16_t intRecvIx = 0;
 static volatile uint8_t halfSymbolIdleCount = 0;
 
 void MRT_IRQHandler(void) {
   MRT_STAT0 |= (1 << 0); //clear interrupt request
-  if (halfSymbolIdleCount++ < 35) return; //todo check this interval. should be 7-8 . works with 35. why?
+  intRecvIx = recvIx;
+  if (halfSymbolIdleCount++ < 200) return; //todo check this interval. should be 7-8 . works with 35. why?
   disableRxReady();
   stopMrtTimer0Imm();
+  recvIx = 0;
   SetSoftwareInt(SINT_USART0_MB_TSX);
-  intRecvIx = recvIx;
 }
 //////////////////////////////////////////////////////////////////////////
 
-void usart0MbTsxHandle() {
-  ClrSoftwareInt(SINT_USART0_MB_TSX);
+void usart0MbTsxHandle() {  
   mb_handle_request(recvBuff, intRecvIx); //todo check result
   halfSymbolIdleCount = 0;
-  intRecvIx = recvIx = 0;
+  intRecvIx = 0;
   enableRxReady();
 }
 ////////////////////////////////////////////////////////////////////////////
 
 void rxReady() {
-  stopMrtTimer0Imm();
-  uint16_t tmpRecvIx = recvIx;
-  recvBuff[tmpRecvIx++] = USART0_RXDAT;
+  stopMrtTimer0Imm();  
+  recvBuff[recvIx++] = USART0_RXDAT;
   halfSymbolIdleCount = 0;
-  startMrtTimer0(HALF_BOD_TICK_COUNT);
-  recvIx = tmpRecvIx;
-  if (tmpRecvIx >= RECV_BUFF_LEN) {
-    ; //todo register overflow
-    intRecvIx = recvIx = 0;
+  startMrtTimer0(HALF_BOD_TICK_COUNT);  
+  if (recvIx >= RECV_BUFF_LEN) {
+    recvIx = 0;
     stopMrtTimer0Imm();
     return;
   }

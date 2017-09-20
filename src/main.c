@@ -45,6 +45,8 @@ void PININT6_IRQHandler(void) { while(1) ; }                 // PIO INT6
 void PININT7_IRQHandler(void) { while(1) ; }                 // PIO INT7
 //////////////////////////////////////////////////////////////////////////
 
+void SysTick_Handler     (void) {  while(1) ; }
+
 #define MAGIC0 0xabcd
 #define MAGIC1 0x9876
 
@@ -57,8 +59,8 @@ typedef enum adxl_holding_settings{
   s_count
 }adxl_holding_settings_t;
 
-#define DEFAULT_WINDOW_SIZE 1
-#define MAX_WINDOW_SIZE 32
+#define DEFAULT_WINDOW_SIZE 2
+#define MAX_WINDOW_SIZE 64
 #define RTU_MAX_SIZE 256
 
 static uint8_t coilsBuff[24] = {0};
@@ -66,10 +68,6 @@ static uint8_t inputDiscreteBuff[24] = {0};
 static uint16_t inputRegisters[3] = {0}; //X, Y, Z
 static uint16_t holdingRegisters[s_count] = {adxlr_2g, odr_100, DEFAULT_WINDOW_SIZE, 0xff, 0xff};
 static mb_client_device_t m_device;
-
-
-//#define ROM_DRIVER_BASE (0x1FFF1FF8UL)
-//ROM_DIV_API_T *ROMDiv = (ROM_DIV_API_T *)(ROM_DRIVER_BASE + 0x10);
 
 int
 main(void) {  
@@ -79,7 +77,7 @@ main(void) {
 
   int32_t currentWinSize = holdingRegisters[s_win_size];
   int32_t xSum, ySum, zSum;
-  uint32_t xWS, yWS, zWS;
+  int32_t xWS, yWS, zWS;
 
   m_device.address = 2;
   m_device.coilsMap.startAddr = 0;
@@ -125,7 +123,7 @@ main(void) {
     if (SoftwareInterruptsFlag & SINT_ADXL_X_UPDATED) {
       ClrSoftwareInt(SINT_ADXL_X_UPDATED);
       xSum += adxl_X();
-      if (--xWS == 0) { //need to save this value in input register
+      if (--xWS <= 0) { //need to save this value in input register
         inputRegisters[irX] = LPC_DIV_API->sidiv(xSum, currentWinSize);
         xWS = currentWinSize;
         xSum = 0;
@@ -135,7 +133,7 @@ main(void) {
     if (SoftwareInterruptsFlag & SINT_ADXL_Y_UPDATED) {
       ClrSoftwareInt(SINT_ADXL_Y_UPDATED);
       ySum += adxl_Y();
-      if (--yWS == 0) { //need to save this value in input register
+      if (--yWS <= 0) { //need to save this value in input register
         inputRegisters[irY] = LPC_DIV_API->sidiv(ySum, currentWinSize);
         yWS = currentWinSize;
         ySum = 0;
@@ -145,7 +143,7 @@ main(void) {
     if (SoftwareInterruptsFlag & SINT_ADXL_Z_UPDATED) {
       ClrSoftwareInt(SINT_ADXL_Z_UPDATED);
       zSum += adxl_Z();
-      if (--zWS == 0) { //need to save this value in input register
+      if (--zWS <= 0) { //need to save this value in input register
         inputRegisters[irZ] = LPC_DIV_API->sidiv(zSum, currentWinSize);
         zWS = currentWinSize;
         zSum = 0;

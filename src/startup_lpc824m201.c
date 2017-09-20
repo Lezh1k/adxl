@@ -37,8 +37,8 @@ void NMI_Handler         (void) {  while(1) ; }
 void HardFault_Handler   (void) {  while(1) ; }
 void SVC_Handler         (void) {  while(1) ; }
 void PendSV_Handler      (void) {  while(1) ; }
-void SysTick_Handler     (void) {  while(1) ; }
 
+extern void SysTick_Handler (void); //using in main
 /* ARMCM0plus Specific Interrupts */
 extern void SPI0_IRQHandler() ;                    // SPI0 controller
 extern void SPI1_IRQHandler() ;                    // SPI1 controller
