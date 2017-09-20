@@ -1,3 +1,4 @@
 arm_adxl.pro.user
 build/*
 bin/*
+ref/testTarget/testTarget.pro.user
