@@ -63,7 +63,7 @@ static volatile uint8_t halfSymbolIdleCount = 0;
 void MRT_IRQHandler(void) {
   MRT_STAT0 |= (1 << 0); //clear interrupt request
   intRecvIx = recvIx;
-  if (halfSymbolIdleCount++ < 200) return; //todo check this interval. should be 7-8 . works with 35. why?
+  if (halfSymbolIdleCount++ < 35) return; //todo check this interval. should be 7-8 . works with 35. why?
   disableRxReady();
   stopMrtTimer0Imm();
   recvIx = 0;

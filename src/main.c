@@ -104,6 +104,17 @@ main(void) {
   mb_init(&m_device);
 
   while (1) {
+
+    if (holdingRegisters[s_magic0] == MAGIC0 &&
+        holdingRegisters[s_magic1] == MAGIC1) {
+      //SCB->AIRCR = 0x05FA0004;    //reset
+      //for cortex-M0+ reset value is 0xFA050000
+      //http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0662b/CIHFDJCA.html
+      *((uint32_t*)0xE000ED0C) = 0x05fa0004;
+    } else {
+      holdingRegisters[s_magic0] = holdingRegisters[s_magic1] = 0xff;
+    }
+
     if (currentAdxlRange != holdingRegisters[s_range]) {
       adxlSetRange(holdingRegisters[s_range]);
       currentAdxlRange = holdingRegisters[s_range];
