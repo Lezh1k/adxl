@@ -47,15 +47,12 @@ void PININT7_IRQHandler(void) { while(1) ; }                 // PIO INT7
 
 void SysTick_Handler     (void) {  while(1) ; }
 
-#define MAGIC0 0xabcd
-#define MAGIC1 0x9876
+#define MAGIC0 0x0b3d
 
 typedef enum adxl_holding_settings{
   s_range = 0,
   s_odr,
   s_win_size,
-  s_magic0,
-  s_magic1,
   s_count
 }adxl_holding_settings_t;
 
@@ -66,7 +63,7 @@ typedef enum adxl_holding_settings{
 static uint8_t coilsBuff[24] = {0};
 static uint8_t inputDiscreteBuff[24] = {0};
 static uint16_t inputRegisters[3] = {0}; //X, Y, Z
-static uint16_t holdingRegisters[s_count] = {adxlr_2g, odr_100, DEFAULT_WINDOW_SIZE, 0xff, 0xff};
+static uint16_t holdingRegisters[s_count] = {adxlr_2g, odr_100, DEFAULT_WINDOW_SIZE, 0xff};
 static mb_client_device_t m_device;
 
 int
@@ -105,14 +102,11 @@ main(void) {
 
   while (1) {
 
-    if (holdingRegisters[s_magic0] == MAGIC0 &&
-        holdingRegisters[s_magic1] == MAGIC1) {
+    if (holdingRegisters[s_magic0] == MAGIC0) {
       //SCB->AIRCR = 0x05FA0004;    //reset
       //for cortex-M0+ reset value is 0xFA050000
       //http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0662b/CIHFDJCA.html
       *((volatile uint32_t*)0xE000ED0C) = 0x05fa0004;
-    } else {
-      holdingRegisters[s_magic0] = holdingRegisters[s_magic1] = 0xff;
     }
 
     if (currentAdxlRange != holdingRegisters[s_range]) {
@@ -131,8 +125,8 @@ main(void) {
       currentWinSize = holdingRegisters[s_win_size];
     }
 
-    if (SoftwareInterruptsFlag & SINT_ADXL_Z_UPDATED) {
-      ClrSoftwareInt(SINT_ADXL_Z_UPDATED);
+    if (SoftwareInterruptsFlag & SINT_ADXL_XYZ_UPDATED) {
+      ClrSoftwareInt(SINT_ADXL_XYZ_UPDATED);
 
       xSum += adxl_X();
       if (--xWS <= 0) { //need to save this value in input register

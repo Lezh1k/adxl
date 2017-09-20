@@ -87,52 +87,53 @@ static inline void spi0RxDisable() { SPI0_INTENCLR |= RXRDY;}
 static inline void spi0TxReadyEnable() { SPI0_INTENSET |= TXRDY;}
 static inline void spi0TxReadyDisable() { SPI0_INTENSET |= TXRDY;}
 
-static uint8_t rxBuffer[6] = {0}; //x, y, z
-static uint8_t rxCurIx = 0;
-
-static uint8_t cmdBuff[6] = {AR_XDATA_H, AR_XDATA_L,
+static uint8_t m_xyzRxBuffer[6] = {0}; //x, y, z
+static uint8_t m_xyzRxCurIx = 0;
+static uint8_t m_xyzCmdBuff[6] =
+                            {AR_XDATA_H, AR_XDATA_L,
                              AR_YDATA_H, AR_YDATA_L,
                              AR_ZDATA_H, AR_ZDATA_L};
-
-
-static uint8_t cmdIx = 0;
+static uint8_t m_xyzCmdIx = 0;
+static uint8_t m_needWriteSettingsCommand = 0;
 
 //enabled only for x, y, z data.
 void SPI0_IRQHandler(void) {
-  static volatile uint8_t txCount = 0;
+  static volatile uint8_t xyzTxCount = 0;
+  uint32_t stat = SPI0_INSTAT;
 
-  uint32_t is = SPI0_INSTAT;
-
-  if (is & RXRDY) {
-    rxBuffer[rxCurIx] = SPI0_RXDAT;
-    if (++rxCurIx >= 6){
-        SetSoftwareInt(SINT_ADXL_Z_UPDATED);
-        rxCurIx = 0;
+  if (stat & RXRDY) {
+    m_xyzRxBuffer[m_xyzRxCurIx] = SPI0_RXDAT;
+    if (++m_xyzRxCurIx == 6){
+      SetSoftwareInt(SINT_ADXL_XYZ_UPDATED);
+      m_xyzRxCurIx = 0;
     }
   }
 
-  if (is & TXRDY) {
-    if(!txCount && needOther){
-            hdfgh jgf jhg kjghk jh
-    }else{
+  do {
+    if (~stat & TXRDY)
+      break;
 
+    if (!xyzTxCount && m_needWriteSettingsCommand) {
 
-        if (txCount) { //end of transaction
-            SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(7) |      //1 byte
-                    SPI_TXDATCTL_EOT |          //end of transaction.
-                    SPI_TXDATCTL_SSEL_N(0xe) |  //SSEL0 asserted
-                    0x00;
-            txCount = 0;
-        } else { //begin of transaction
-            SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(15) |     //2 bytes
-                    SPI_TXDATCTL_SSEL_N(0xe) |  //SSEL0 asserted
-                    SPI_TXDATCTL_RXIGNORE |
-                    (uint16_t)((adxl_read_r << 8) | cmdBuff[cmdIx++]);
-            if (cmdIx >= 6) cmdIx = 0;
-            txCount = 1;
-        }
+      break;
     }
-  }
+
+    //xyz processing
+    if (xyzTxCount) { //end of values transaction
+      SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(7) |      //1 byte
+                      SPI_TXDATCTL_EOT |          //end of transaction.
+                      SPI_TXDATCTL_SSEL_N(0xe) |  //SSEL0 asserted
+                      0x00;
+      xyzTxCount = 0;
+    } else { //begin of values transaction
+      SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(15) |     //2 bytes
+                      SPI_TXDATCTL_SSEL_N(0xe) |  //SSEL0 asserted
+                      SPI_TXDATCTL_RXIGNORE |
+                      (uint16_t)((adxl_read_r << 8) | m_xyzCmdBuff[m_xyzCmdIx++]);
+      if (m_xyzCmdIx >= 6) m_xyzCmdIx = 0;
+      xyzTxCount = 1;
+    }
+  } while (0);
 }
 //////////////////////////////////////////////////////////////////////////
 
@@ -173,7 +174,7 @@ void adxlReset(void) {
     writeRegisterSync(i, init_data[i-0x20]);
   for (i = 100; --i;); //wait
 
-  cmdIx = rxCurIx = 0;
+  m_xyzCmdIx = m_xyzRxCurIx = 0;
   NVIC_ISER0 |= (1 << 0); //enable SPI0 interrupt.
 
   spi0RxEnable();
@@ -236,8 +237,8 @@ void adxlSetRange(adxl_range_t range) {
   m_currentRange = range;
 
   for (reg = 0; reg < 6; ++reg)
-    rxBuffer[reg] = 0;
-  cmdIx = rxCurIx = 0;
+    m_xyzRxBuffer[reg] = 0;
+  m_xyzCmdIx = m_xyzRxCurIx = 0;
 
   spi0RxEnable();
   spi0TxReadyEnable();
@@ -256,8 +257,8 @@ void adxlSetOdr(adxl_odr_t odr) {
   writeRegisterSync(AR_FILTER_CTL, reg);
 
   for (reg = 0; reg < 6; ++reg)
-    rxBuffer[reg] = 0;
-  cmdIx = rxCurIx = 0;
+    m_xyzRxBuffer[reg] = 0;
+  m_xyzCmdIx = m_xyzRxCurIx = 0;
 
   spi0RxEnable();
   spi0TxReadyEnable();
@@ -265,22 +266,22 @@ void adxlSetOdr(adxl_odr_t odr) {
 //////////////////////////////////////////////////////////////////////////
 
 int16_t adxl_X(void) {
-  int16_t res = (uint16_t)rxBuffer[0] << 8;
-  res |= rxBuffer[1];
+  int16_t res = (uint16_t)m_xyzRxBuffer[0] << 8;
+  res |= m_xyzRxBuffer[1];
   return res;
 }
 //////////////////////////////////////////////////////////////////////////
 
 int16_t adxl_Y(void) {
-  int16_t res = (uint16_t)rxBuffer[2] << 8;
-  res |= rxBuffer[3];
+  int16_t res = (uint16_t)m_xyzRxBuffer[2] << 8;
+  res |= m_xyzRxBuffer[3];
   return res;
 }
 //////////////////////////////////////////////////////////////////////////
 
 int16_t adxl_Z(void) {
-  int16_t res = (uint16_t)rxBuffer[4] << 8;
-  res |= rxBuffer[5];
+  int16_t res = (uint16_t)m_xyzRxBuffer[4] << 8;
+  res |= m_xyzRxBuffer[5];
   return res;
 }
 //////////////////////////////////////////////////////////////////////////
