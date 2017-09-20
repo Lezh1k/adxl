@@ -105,34 +105,32 @@ void SPI0_IRQHandler(void) {
 
   if (is & RXRDY) {
     rxBuffer[rxCurIx] = SPI0_RXDAT;
-    switch (rxCurIx) {
-      case 1:
-        SetSoftwareInt(SINT_ADXL_X_UPDATED);
-        break;
-      case 3:
-        SetSoftwareInt(SINT_ADXL_Y_UPDATED);
-        break;
-      case 5:
+    if (++rxCurIx >= 6){
         SetSoftwareInt(SINT_ADXL_Z_UPDATED);
-        break;
+        rxCurIx = 0;
     }
-    if (++rxCurIx >= 6) rxCurIx = 0;
   }
 
   if (is & TXRDY) {
-    if (txCount) { //end of transaction
-      SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(7) |      //1 byte
-                      SPI_TXDATCTL_EOT |          //end of transaction.
-                      SPI_TXDATCTL_SSEL_N(0xe) |  //SSEL0 asserted
-                      0x00;
-      txCount = 0;
-    } else { //begin of transaction
-      SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(15) |     //2 bytes
-                      SPI_TXDATCTL_SSEL_N(0xe) |  //SSEL0 asserted
-                      SPI_TXDATCTL_RXIGNORE |
-                      (uint16_t)((adxl_read_r << 8) | cmdBuff[cmdIx++]);
-      if (cmdIx >= 6) cmdIx = 0;
-      txCount = 1;
+    if(!txCount && needOther){
+            hdfgh jgf jhg kjghk jh
+    }else{
+
+
+        if (txCount) { //end of transaction
+            SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(7) |      //1 byte
+                    SPI_TXDATCTL_EOT |          //end of transaction.
+                    SPI_TXDATCTL_SSEL_N(0xe) |  //SSEL0 asserted
+                    0x00;
+            txCount = 0;
+        } else { //begin of transaction
+            SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(15) |     //2 bytes
+                    SPI_TXDATCTL_SSEL_N(0xe) |  //SSEL0 asserted
+                    SPI_TXDATCTL_RXIGNORE |
+                    (uint16_t)((adxl_read_r << 8) | cmdBuff[cmdIx++]);
+            if (cmdIx >= 6) cmdIx = 0;
+            txCount = 1;
+        }
     }
   }
 }

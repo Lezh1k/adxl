@@ -110,7 +110,7 @@ main(void) {
       //SCB->AIRCR = 0x05FA0004;    //reset
       //for cortex-M0+ reset value is 0xFA050000
       //http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0662b/CIHFDJCA.html
-      *((uint32_t*)0xE000ED0C) = 0x05fa0004;
+      *((volatile uint32_t*)0xE000ED0C) = 0x05fa0004;
     } else {
       holdingRegisters[s_magic0] = holdingRegisters[s_magic1] = 0xff;
     }
@@ -131,28 +131,22 @@ main(void) {
       currentWinSize = holdingRegisters[s_win_size];
     }
 
-    if (SoftwareInterruptsFlag & SINT_ADXL_X_UPDATED) {
-      ClrSoftwareInt(SINT_ADXL_X_UPDATED);
+    if (SoftwareInterruptsFlag & SINT_ADXL_Z_UPDATED) {
+      ClrSoftwareInt(SINT_ADXL_Z_UPDATED);
+
       xSum += adxl_X();
       if (--xWS <= 0) { //need to save this value in input register
         inputRegisters[irX] = LPC_DIV_API->sidiv(xSum, currentWinSize);
         xWS = currentWinSize;
         xSum = 0;
       }
-    }
 
-    if (SoftwareInterruptsFlag & SINT_ADXL_Y_UPDATED) {
-      ClrSoftwareInt(SINT_ADXL_Y_UPDATED);
       ySum += adxl_Y();
       if (--yWS <= 0) { //need to save this value in input register
         inputRegisters[irY] = LPC_DIV_API->sidiv(ySum, currentWinSize);
         yWS = currentWinSize;
         ySum = 0;
       }
-    }
-
-    if (SoftwareInterruptsFlag & SINT_ADXL_Z_UPDATED) {
-      ClrSoftwareInt(SINT_ADXL_Z_UPDATED);
       zSum += adxl_Z();
       if (--zWS <= 0) { //need to save this value in input register
         inputRegisters[irZ] = LPC_DIV_API->sidiv(zSum, currentWinSize);
