@@ -62,18 +62,18 @@ typedef struct mb_counters {
 //////////////////////////////////////////////////////////////////////////
 
 typedef struct mb_request_handler {
-  uint8_t   fc;
-  uint16_t  fcValidationResult;
   uint16_t  (*pfCheckAddress)(mb_adu_t *adu);
   uint16_t  (*pfValidateDataValue)(mb_adu_t *adu);
   uint16_t  (*pfExecuteFunction)(mb_adu_t *adu);
+  uint16_t  fcValidationResult;
+  uint8_t   padding[2]; //I hope function pointers take 4B
 } mb_request_handler_t;
 
 static mb_adu_t aduFromStream(uint8_t *data, uint16_t len);
 static uint8_t *aduSerialize(mb_adu_t *adu); //create on heap
 static uint16_t mbSendResponse(mb_adu_t *adu);
 static void mbSendExcResponse(mbec_exception_code_t exc_code, mb_adu_t *adu);
-static mb_request_handler_t* mbValidateFunctionCode(mb_adu_t* adu);
+static mb_request_handler_t mbValidateFunctionCode(mb_adu_t* adu);
 static void handleBroadcastMessage(uint8_t *data, uint16_t len);
 //////////////////////////////////////////////////////////////////////////
 
@@ -128,13 +128,7 @@ static uint16_t checkReadHoldingRegistersData(mb_adu_t *adu);
 static uint16_t checkWriteMultipleRegistersData(mb_adu_t *adu);
 static uint16_t checkReadWriteMultipleRegistersData(mb_adu_t *adu);
 static uint16_t checkMaskWriteRegistersData(mb_adu_t *adu);
-static uint16_t checkReadFifoData(mb_adu_t *adu);
-static uint16_t checkReadFileRecordData(mb_adu_t *adu);
-static uint16_t checkWriteFileRecordData(mb_adu_t *adu);
-static uint16_t checkReadExceptionStatusData(mb_adu_t *adu);
 static uint16_t checkDiagnosticData(mb_adu_t *adu);
-static uint16_t checkGetComEventCounterData(mb_adu_t *adu);
-static uint16_t checkGetComEventLogData(mb_adu_t *adu);
 static uint16_t checkReportDeviceIdData(mb_adu_t *adu);
 static uint16_t checkEncapsulateTpInfoData(mb_adu_t *adu);
 /*check data functions end*/
@@ -155,13 +149,7 @@ static uint16_t executeWriteSingleRegister(mb_adu_t *adu);
 static uint16_t executeWriteMultipleRegisters(mb_adu_t *adu);
 static uint16_t executeReadWriteMultipleRegisters(mb_adu_t *adu);
 static uint16_t executeMaskWriteRegisters(mb_adu_t *adu);
-static uint16_t executeReadFifo(mb_adu_t *adu);
-static uint16_t executeReadFileRecord(mb_adu_t *adu);
-static uint16_t executeWriteFileRecord(mb_adu_t *adu);
-static uint16_t executeReadExceptionStatus(mb_adu_t *adu);
 static uint16_t executeDiagnostic(mb_adu_t *adu);
-static uint16_t executeGetComEventCounter(mb_adu_t *adu);
-static uint16_t executeGetComEventLog(mb_adu_t *adu);
 static uint16_t executeReportDeviceId(mb_adu_t *adu);
 static uint16_t executeEncapsulateTpInfo(mb_adu_t *adu);
 /*STANDARD FUNCTIONS HANDLERS END*/
@@ -170,7 +158,6 @@ static uint16_t executeEncapsulateTpInfo(mb_adu_t *adu);
 
 static mb_client_device_t* m_device = NULL;
 static mb_counters_t m_counters = {0};
-static uint8_t m_exception_status = 0x00; //nothing is happened here.
 
 /*local variables END*/
 static inline void clear_counters() {
@@ -201,7 +188,7 @@ static volatile uint8_t is_busy = 0;
 uint16_t mb_handle_request(uint8_t *data, uint16_t data_len) {
   uint16_t res = 0x00; //success
   mb_adu_t adu_req = {0};
-  mb_request_handler_t *rh = NULL;
+  mb_request_handler_t rh = {0};
   uint16_t expected_crc, real_crc;
 
   do {
@@ -240,25 +227,25 @@ uint16_t mb_handle_request(uint8_t *data, uint16_t data_len) {
       break; //silently.
 
     m_counters.slaveMsg++;
-    if (!rh->fcValidationResult) {
+    if (!rh.fcValidationResult) {
       ++m_counters.excErr;
       mbSendExcResponse(res = mbec_illegal_function, &adu_req);
       break;
     }
 
-    if (!rh->pfCheckAddress(&adu_req)) {
+    if (!rh.pfCheckAddress(&adu_req)) {
       ++m_counters.excErr;
       mbSendExcResponse(res = mbec_illegal_data_address, &adu_req);
       break;
     }
 
-    if (!rh->pfValidateDataValue(&adu_req)) {
+    if (!rh.pfValidateDataValue(&adu_req)) {
       ++m_counters.excErr;
       mbSendExcResponse(res = mbec_illegal_data_value, &adu_req);
       break;
     }
 
-    if ((res = rh->pfExecuteFunction(&adu_req))) {
+    if ((res = rh.pfExecuteFunction(&adu_req))) {
       ++m_counters.excErr;
       mbSendExcResponse(res, &adu_req);
       break;
@@ -379,46 +366,12 @@ uint16_t checkMaskWriteRegistersData(mb_adu_t *adu) {
 }
 //////////////////////////////////////////////////////////////////////////
 
-uint16_t checkReadFifoData(mb_adu_t *adu) {
-  UNUSED_ARG(adu);
-  return 0u;
-}
-//////////////////////////////////////////////////////////////////////////
 
-uint16_t checkReadFileRecordData(mb_adu_t *adu) {
-  UNUSED_ARG(adu);
-  return 0u;
-}
-//////////////////////////////////////////////////////////////////////////
-
-uint16_t checkWriteFileRecordData(mb_adu_t *adu) {
-  UNUSED_ARG(adu);
-  return 0u;
-}
-//////////////////////////////////////////////////////////////////////////
-
-uint16_t checkReadExceptionStatusData(mb_adu_t *adu) {
-  UNUSED_ARG(adu);
-  return 1u;
-}
-//////////////////////////////////////////////////////////////////////////
 
 uint16_t checkDiagnosticData(mb_adu_t *adu) {
   uint16_t sub_function = U16_MSBFromStream(adu->data);
   return sub_function < sizeof(diagnostic_data_handlers) / sizeof(pf_diagnostic_data_t)
       && diagnostic_data_handlers[sub_function];
-}
-//////////////////////////////////////////////////////////////////////////
-
-uint16_t checkGetComEventCounterData(mb_adu_t *adu) {
-  UNUSED_ARG(adu);
-  return 1u;
-}
-//////////////////////////////////////////////////////////////////////////
-
-uint16_t checkGetComEventLogData(mb_adu_t *adu) {
-  UNUSED_ARG(adu);
-  return 0u;
 }
 //////////////////////////////////////////////////////////////////////////
 
@@ -620,31 +573,6 @@ uint16_t executeMaskWriteRegisters(mb_adu_t *adu) {
 }
 //////////////////////////////////////////////////////////////////////////
 
-uint16_t executeReadFifo(mb_adu_t *adu) {
-  UNUSED_ARG(adu);
-  return 0u;
-}
-//////////////////////////////////////////////////////////////////////////
-
-uint16_t executeReadFileRecord(mb_adu_t *adu) {
-  UNUSED_ARG(adu);
-  return 0u;
-}
-//////////////////////////////////////////////////////////////////////////
-
-uint16_t executeWriteFileRecord(mb_adu_t *adu) {
-  UNUSED_ARG(adu);
-  return 0u;
-}
-//////////////////////////////////////////////////////////////////////////
-
-uint16_t executeReadExceptionStatus(mb_adu_t *adu) {
-  adu->dataLen = 1; //exception status
-  *adu->data = m_exception_status;
-  return mbec_OK;
-}
-//////////////////////////////////////////////////////////////////////////
-
 uint16_t diagReturnQueryData(mb_adu_t *adu) {
   UNUSED_ARG(adu); //just return adu as is . is it kind of ping?
   return mbec_OK;
@@ -747,18 +675,6 @@ uint16_t executeDiagnostic(mb_adu_t *adu) {
 }
 //////////////////////////////////////////////////////////////////////////
 
-uint16_t executeGetComEventCounter(mb_adu_t *adu) {
-  UNUSED_ARG(adu); //todo implement this later
-  return mbec_illegal_function;
-}
-//////////////////////////////////////////////////////////////////////////
-
-uint16_t executeGetComEventLog(mb_adu_t *adu) {
-  UNUSED_ARG(adu);
-  return mbec_illegal_function;
-}
-//////////////////////////////////////////////////////////////////////////
-
 uint16_t executeReportDeviceId(mb_adu_t *adu) {
   adu->dataLen = 2;
   adu->data[0] = m_device->address; //should be some device specific data. now - nothing.
@@ -776,82 +692,85 @@ uint16_t executeEncapsulateTpInfo(mb_adu_t *adu) {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-mb_request_handler_t* mbValidateFunctionCode(mb_adu_t* adu) {
-  //maybe it's better to use switch, because this table takes ~ 19*(1+2+3*sizeof(funciton_pointer))B
+mb_request_handler_t mbValidateFunctionCode(mb_adu_t* adu) {
+
   enum {fc_is_not_supported = 0, fc_is_supported = 1};
+  static mb_request_handler_t unsupportedReqHandler = {
+     NULL, NULL, NULL, fc_is_not_supported
+  };
+  mb_request_handler_t result;
+  result.fcValidationResult = fc_is_supported;
 
-  static mb_request_handler_t handlers[] = {
-    {mbfc_read_discrete_input, fc_is_supported, checkDiscreteInputAddress,
-     checkReadDiscreteInputData, executeReadDiscreteInputs },
-
-    {mbfc_read_coils, fc_is_supported, checkCoilsAddress,
-     checkReadCoilsData, executeReadCoils },
-
-    {mbfc_write_single_coil, fc_is_supported, checkCoilsAddress,
-     checkWriteSingleCoilData, executeWriteSingleCoil },
-
-    {mbfc_write_multiple_coils, fc_is_supported, checkCoilsAddress,
-     checkWriteMultipleCoilsData, executeWriteMultipleCoils },
-    /*rw registers*/
-
-    {mbfc_read_input_registers, fc_is_supported, checkInputRegistersAddress,
-     checkReadInputRegistersData, executeReadInputRegisters },
-
-    {mbfc_read_holding_registers, fc_is_supported, checkHoldingRegistersAddress,
-     checkReadHoldingRegistersData, executeReadHoldingRegisters },
-
-    {mbfc_write_single_register, fc_is_supported, checkHoldingRegistersAddress,
-     checkWriteSingleRegisterData, executeWriteSingleRegister },
-
-    {mbfc_write_multiple_registers, fc_is_supported, checkHoldingRegistersAddress,
-     checkWriteMultipleRegistersData, executeWriteMultipleRegisters },
-
-    {mbfc_read_write_multiple_registers, fc_is_not_supported, checkHoldingRegistersAddress,
-     checkReadWriteMultipleRegistersData, executeReadWriteMultipleRegisters },
-
-    {mbfc_mask_write_registers, fc_is_supported, checkHoldingRegistersAddress,
-     checkMaskWriteRegistersData, executeMaskWriteRegisters },
-
-    /*r fifo*/
-    {mbfc_read_fifo, fc_is_not_supported, checkAddressAndReturnOk,
-     checkReadFifoData, executeReadFifo },
-    /*diagnostic*/
-
-    {mbfc_read_file_record, fc_is_not_supported, checkAddressAndReturnOk,
-     checkReadFileRecordData, executeReadFileRecord },
-
-    {mbfc_write_file_record, fc_is_not_supported, checkAddressAndReturnOk,
-     checkWriteFileRecordData, executeWriteFileRecord },
-
-    {mbfc_read_exception_status, fc_is_not_supported, checkAddressAndReturnOk,
-     checkReadExceptionStatusData, executeReadExceptionStatus },
-
-    {mbfc_diagnostic, fc_is_supported, checkAddressAndReturnOk,
-     checkDiagnosticData, executeDiagnostic },
-
-    {mbfc_get_com_event_counter, fc_is_not_supported, checkAddressAndReturnOk,
-     checkGetComEventCounterData, executeGetComEventCounter },
-
-    {mbfc_get_com_event_log, fc_is_supported, checkAddressAndReturnOk,
-     checkGetComEventLogData, executeGetComEventLog },
-
-    /*misc*/
-    {mbfc_report_device_id, fc_is_supported, checkAddressAndReturnOk,
-     checkReportDeviceIdData, executeReportDeviceId },
-
-    //strange function. we will support only one parameter : 0x0e
-    {mbfc_encapsulate_tp_info, fc_is_supported, checkAddressAndReturnOk,
-     checkEncapsulateTpInfoData, executeEncapsulateTpInfo },
-
-    {0xff, fc_is_not_supported, NULL, NULL, NULL} /*UNSUPPORTED FUNCTION HANDLER*/
-  }; //handlers table
-
-  mb_request_handler_t* res = handlers;
-  for (; res->fc != 0xff; ++res) {
-    if (res->fc == adu->fc) break;
+  switch (adu->fc) {
+    case mbfc_read_discrete_input:
+      result.pfCheckAddress= checkDiscreteInputAddress;
+      result.pfValidateDataValue = checkReadDiscreteInputData;
+      result.pfExecuteFunction = executeReadDiscreteInputs;
+      return result;
+    case mbfc_read_coils:
+      result.pfCheckAddress= checkCoilsAddress;
+      result.pfValidateDataValue = checkReadCoilsData;
+      result.pfExecuteFunction = executeReadCoils;
+      return result;
+    case mbfc_write_single_coil:
+      result.pfCheckAddress= checkCoilsAddress;
+      result.pfValidateDataValue = checkWriteSingleCoilData;
+      result.pfExecuteFunction = executeWriteSingleCoil;
+      return result;
+    case mbfc_write_multiple_coils:
+      result.pfCheckAddress= checkCoilsAddress;
+      result.pfValidateDataValue = checkWriteMultipleCoilsData;
+      result.pfExecuteFunction = executeWriteMultipleCoils;
+      return result;
+    case mbfc_read_input_registers:
+      result.pfCheckAddress= checkInputRegistersAddress;
+      result.pfValidateDataValue = checkReadInputRegistersData;
+      result.pfExecuteFunction = executeReadInputRegisters;
+      return result;
+    case mbfc_read_holding_registers:
+      result.pfCheckAddress= checkHoldingRegistersAddress;
+      result.pfValidateDataValue = checkReadHoldingRegistersData;
+      result.pfExecuteFunction = executeReadHoldingRegisters;
+      return result;
+    case mbfc_write_single_register:
+      result.pfCheckAddress= checkHoldingRegistersAddress;
+      result.pfValidateDataValue = checkWriteSingleRegisterData;
+      result.pfExecuteFunction = executeWriteSingleRegister;
+      return result;
+    case mbfc_write_multiple_registers:
+      result.pfCheckAddress= checkHoldingRegistersAddress;
+      result.pfValidateDataValue = checkWriteMultipleRegistersData;
+      result.pfExecuteFunction = executeWriteMultipleRegisters;
+      return result;
+    case mbfc_read_write_multiple_registers:
+      result.pfCheckAddress= checkHoldingRegistersAddress;
+      result.pfValidateDataValue = checkReadWriteMultipleRegistersData;
+      result.pfExecuteFunction = executeReadWriteMultipleRegisters;
+      return result;
+    case mbfc_mask_write_registers:
+      result.pfCheckAddress= checkHoldingRegistersAddress;
+      result.pfValidateDataValue = checkMaskWriteRegistersData;
+      result.pfExecuteFunction = executeMaskWriteRegisters;
+      return result;
+    case mbfc_diagnostic:
+      result.pfCheckAddress= checkAddressAndReturnOk;
+      result.pfValidateDataValue = checkDiagnosticData;
+      result.pfExecuteFunction = executeDiagnostic;
+      return result;
+    case mbfc_report_device_id:
+      result.pfCheckAddress= checkAddressAndReturnOk;
+      result.pfValidateDataValue = checkReportDeviceIdData;
+      result.pfExecuteFunction = executeReportDeviceId;
+      return result;
+    case mbfc_encapsulate_tp_info:
+      result.pfCheckAddress= checkAddressAndReturnOk;
+      result.pfValidateDataValue = checkEncapsulateTpInfoData;
+      result.pfExecuteFunction = executeEncapsulateTpInfo;
+      return result;
+    default:
+      return unsupportedReqHandler;
   }
-
-  return res;
+  return unsupportedReqHandler;
 }
 ////////////////////////////////////////////////////////////////////////////
 
@@ -888,21 +807,23 @@ mb_adu_t aduFromStream(uint8_t *data, uint16_t len) {
 
 uint8_t* aduSerialize(mb_adu_t *adu) {
   static uint8_t txBuff[256];
-  uint16_t i, crc;
-  uint8_t *tmp;
+  uint16_t i, crc; //we can join varialbes here and use one of them
+  uint8_t *txTmp, *srcTmp;
 
-  tmp = txBuff;
-  *tmp = adu->addr;
-  tmp += sizeof(adu->addr);
-  *tmp = adu->fc;
-  tmp += sizeof(adu->fc);
+  txTmp = txBuff;
+  srcTmp = adu->data;
 
-  for (i = 0; i < adu->dataLen; ++i, ++tmp) {
-    *tmp = adu->data[i];
+  *txTmp = adu->addr;
+  txTmp += sizeof(adu->addr);
+  *txTmp = adu->fc;
+  txTmp += sizeof(adu->fc);
+
+  for (i = adu->dataLen; i--;) {
+    *txTmp++ = *srcTmp++;
   }
 
   crc = crc16(txBuff, aduBufferLen(adu) - sizeof(crc));
-  U16_LSB2Stream(crc, tmp);
+  U16_LSB2Stream(crc, txTmp);
   return txBuff;
 }
 //////////////////////////////////////////////////////////////////////////
