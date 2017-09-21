@@ -874,14 +874,12 @@ void mbSendExcResponse(mbec_exception_code_t exc_code, mb_adu_t* adu) {
 
 mb_adu_t aduFromStream(uint8_t *data, uint16_t len) {
   mb_adu_t result;
-  memcpy(&result.addr, data, 1);
+  result.addr = *data;
   data += sizeof(result.addr);
   result.fc = *data;
   data += sizeof(result.fc);
   result.data = data;
-  result.dataLen = len - (sizeof(mb_adu_t) -
-                          sizeof(result.data) -
-                          sizeof(result.dataLen));
+  result.dataLen = len - 4;
   data += result.dataLen;
   result.crc = U16_LSBFromStream(data);
   return result;
