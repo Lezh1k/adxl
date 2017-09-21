@@ -2,16 +2,16 @@
 #include "modbus_common.h"
 #include "commons.h"
 
-#pragma pack(push)
-#pragma pack(1)
+#include <string.h>
+
 typedef struct mb_adu {
+  uint8_t* data;
+  uint16_t crc; //should be little-endian
   uint8_t addr;
   uint8_t fc;
-  uint8_t* data;
   uint8_t dataLen;
-  uint16_t crc; //should be little-endian
+  uint8_t padding[3];
 } mb_adu_t;
-#pragma pack(pop)
 
 typedef enum diagnostics_sub_code {
   dsc_return_query_data = 0,
@@ -45,10 +45,7 @@ enum {
 };
 
 static inline uint16_t aduBufferLen(mb_adu_t* adu) {
-  return adu->dataLen +
-      sizeof(mb_adu_t) -
-      sizeof(adu->data) -
-      sizeof(adu->dataLen);
+  return adu->dataLen + 4; //addr + function code + crc
 }
 ////////////////////////////////////////////////////////////////////////////
 
@@ -877,7 +874,7 @@ void mbSendExcResponse(mbec_exception_code_t exc_code, mb_adu_t* adu) {
 
 mb_adu_t aduFromStream(uint8_t *data, uint16_t len) {
   mb_adu_t result;
-  result.addr = *(uint8_t*)data;
+  memcpy(&result.addr, data, 1);
   data += sizeof(result.addr);
   result.fc = *data;
   data += sizeof(result.fc);
