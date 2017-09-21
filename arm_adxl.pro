@@ -9,7 +9,6 @@ SOURCES += src/main.c \
     src/usart0.c \
     src/modbus_rtu_client.c \
     src/commons.c \
-    src/heap_memory.c \    
 
 DISTFILES += \
     lpc824m201_linker_script.ld \
@@ -25,4 +24,3 @@ HEADERS += \
     include/commons.h \
     include/modbus_rtu_client.h \
     include/modbus_common.h \
-    include/heap_memory.h \    

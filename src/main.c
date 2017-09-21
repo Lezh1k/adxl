@@ -6,7 +6,6 @@
 #include "adxl363.h"
 #include "usart0.h"
 #include "modbus_rtu_client.h"
-#include "heap_memory.h"
 #include "commons.h"
 //#include "armuart.h"
 
@@ -93,7 +92,6 @@ main(void) {
   m_device.inputRegistersMap.end_addr = sizeof(inputRegisters);
   m_device.tp_send = usart0SendArr;
 
-  hm_init(); //init heap for modbus.
   mb_init(&m_device);
   adxlReset();
 

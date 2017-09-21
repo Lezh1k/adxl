@@ -1,6 +1,5 @@
 #include "modbus_rtu_client.h"
 #include "modbus_common.h"
-#include "heap_memory.h"
 #include "commons.h"
 
 #pragma pack(push)
@@ -204,7 +203,7 @@ void handleBroadcastMessage(uint8_t *data, uint16_t len) {
 static volatile uint8_t is_busy = 0;
 uint16_t mb_handle_request(uint8_t *data, uint16_t data_len) {
   uint16_t res = 0x00; //success
-  mb_adu_t adu_req;
+  mb_adu_t adu_req = {0};
   mb_request_handler_t *rh = NULL;
   uint16_t expected_crc, real_crc;
 
@@ -230,7 +229,7 @@ uint16_t mb_handle_request(uint8_t *data, uint16_t data_len) {
 
     ++m_counters.busMsg;
 
-    adu_req = aduFromStream(data, data_len);    
+    adu_req = aduFromStream(data, data_len);
     rh = mbValidateFunctionCode(&adu_req);
 
     if (adu_req.addr == 0) {
@@ -269,7 +268,7 @@ uint16_t mb_handle_request(uint8_t *data, uint16_t data_len) {
     }
 
     res = mbSendResponse(&adu_req);
-  } while(0);  
+  } while(0);
 
   is_busy = 0;
   return res;
@@ -453,10 +452,7 @@ uint16_t mbReadBits(mb_adu_t *adu, uint8_t *real_addr) {
   bc = nearestMultipleOf8(quantity) / 8;
   adu->dataLen = bc + 1;
 
-  if (!(adu->data = (uint8_t*) hm_malloc(adu->dataLen + 1)))
-    return mbec_heap_error;
-
-  adu->data[0] = bc;
+   adu->data[0] = bc;
   tmp = adu->data + 1;
 
   rshift = address % 8;
@@ -541,10 +537,6 @@ uint16_t mbReadRegisters(mb_adu_t *adu,
   uint16_t address = U16_MSBFromStream(adu->data);
   uint16_t quantity = U16_MSBFromStream(adu->data + 2);
   adu->dataLen = quantity*sizeof(mb_register) + 1;
-  adu->data = (uint8_t*) hm_malloc(adu->dataLen);
-  if (!adu->data)
-    return mbec_heap_error;
-
   adu->data[0] = adu->dataLen - 1;
   tmp = adu->data + 1;
 
@@ -581,8 +573,6 @@ uint16_t executeWriteMultipleRegisters(mb_adu_t *adu) {
   uint8_t *data = adu->data + 5;
 
   uint8_t* tmp;
-  if (!(adu->data = (uint8_t*) hm_malloc(4)))
-    return mbec_heap_error;
   adu->dataLen = 4;
 
   tmp = (uint8_t*) &m_device->holdingRegistersMap.real_addr[address];
@@ -605,10 +595,6 @@ uint16_t executeReadWriteMultipleRegisters(mb_adu_t *adu) {
   uint16_t i;
 
   adu->dataLen = read_quantity*sizeof(mb_register) + 1;
-  adu->data = (uint8_t*) hm_malloc(adu->dataLen);
-  if (!adu->data)
-    return mbec_heap_error;
-
   adu->data[0] = adu->dataLen - 1;
   tmp = adu->data + 1;
   for (i = 0; i < read_quantity; ++i, tmp += sizeof(mb_register)) {
@@ -657,9 +643,6 @@ uint16_t executeWriteFileRecord(mb_adu_t *adu) {
 
 uint16_t executeReadExceptionStatus(mb_adu_t *adu) {
   adu->dataLen = 1; //exception status
-  adu->data = (uint8_t*) hm_malloc(adu->dataLen);
-  if (!adu->data)
-    return mbec_heap_error;
   *adu->data = m_exception_status;
   return mbec_OK;
 }
@@ -716,8 +699,6 @@ uint16_t diagCleanCounterAndDiagnosticRegisters(mb_adu_t *adu) {
 
 static inline uint16_t diag_return_some_counter(mb_adu_t *adu, uint16_t val) {
   uint16_t sf = U16_MSBFromStream(adu->data); //sub function
-  if (!(adu->data = (uint8_t*) hm_malloc(4)))
-    return mbec_heap_error;
   adu->dataLen = 4;
   U16_MSB2Stream(sf, adu->data);
   U16_MSB2Stream(val, adu->data+2);
@@ -783,10 +764,6 @@ uint16_t executeGetComEventLog(mb_adu_t *adu) {
 
 uint16_t executeReportDeviceId(mb_adu_t *adu) {
   adu->dataLen = 2;
-  adu->data = (uint8_t*) hm_malloc(adu->dataLen);
-  if (!adu->data)
-    return mbec_heap_error;
-
   adu->data[0] = m_device->address; //should be some device specific data. now - nothing.
   adu->data[1] = 0xff; //0x00 -OFF, 0xff - ON. Run indicator status
   return mbec_OK;
@@ -885,7 +862,6 @@ uint16_t mbSendResponse(mb_adu_t* adu) {
   uint8_t* send_buff = aduSerialize(adu);
   if (!send_buff) return mbec_heap_error;
   m_device->tp_send(send_buff, aduBufferLen(adu));
-  hm_free((memory_t)send_buff);
   return 0u;
 }
 ////////////////////////////////////////////////////////////////////////////
@@ -916,12 +892,11 @@ mb_adu_t aduFromStream(uint8_t *data, uint16_t len) {
 ////////////////////////////////////////////////////////////////////////////
 
 uint8_t* aduSerialize(mb_adu_t *adu) {
+  static uint8_t txBuff[256];
   uint16_t i, crc;
   uint8_t *tmp;
-  uint8_t *buffer = (uint8_t*) hm_malloc(aduBufferLen(adu));
-  if (!buffer) return NULL;
 
-  tmp = buffer;
+  tmp = txBuff;
   *tmp = adu->addr;
   tmp += sizeof(adu->addr);
   *tmp = adu->fc;
@@ -931,9 +906,9 @@ uint8_t* aduSerialize(mb_adu_t *adu) {
     *tmp = adu->data[i];
   }
 
-  crc = crc16(buffer, aduBufferLen(adu) - sizeof(crc));
+  crc = crc16(txBuff, aduBufferLen(adu) - sizeof(crc));
   U16_LSB2Stream(crc, tmp);
-  return buffer;
+  return txBuff;
 }
 //////////////////////////////////////////////////////////////////////////
 
