@@ -185,10 +185,10 @@ void handleBroadcastMessage(uint8_t *data, uint16_t len) {
 }
 
 static volatile uint8_t is_busy = 0;
-uint16_t mb_handle_request(uint8_t *data, uint16_t data_len) {
+uint16_t mbHandleRequest(uint8_t *data, uint16_t data_len) {
   uint16_t res = 0x00; //success
-  mb_adu_t adu_req = {0};
-  mb_request_handler_t rh = {0};
+  mb_adu_t adu_req;
+  mb_request_handler_t rh;
   uint16_t expected_crc, real_crc;
 
   do {
@@ -775,9 +775,8 @@ mb_request_handler_t mbValidateFunctionCode(mb_adu_t* adu) {
 ////////////////////////////////////////////////////////////////////////////
 
 uint16_t mbSendResponse(mb_adu_t* adu) {
-  uint8_t* send_buff = aduSerialize(adu);
-  if (!send_buff) return mbec_heap_error;
-  m_device->tp_send(send_buff, aduBufferLen(adu));
+  uint8_t* sendBuff = aduSerialize(adu);
+  m_device->fpSendData(sendBuff, aduBufferLen(adu));
   return 0u;
 }
 ////////////////////////////////////////////////////////////////////////////
@@ -787,7 +786,7 @@ void mbSendExcResponse(mbec_exception_code_t exc_code, mb_adu_t* adu) {
                      adu->fc | 0x80,
                      exc_code };
   U16_LSB2Stream(crc16(resp, 3), resp + 3);
-  m_device->tp_send(resp, 5);
+  m_device->fpSendData(resp, 5);
 }
 ////////////////////////////////////////////////////////////////////////////
 
@@ -807,7 +806,8 @@ mb_adu_t aduFromStream(uint8_t *data, uint16_t len) {
 
 uint8_t* aduSerialize(mb_adu_t *adu) {
   static uint8_t txBuff[256];
-  uint16_t i, crc; //we can join varialbes here and use one of them
+//  uint16_t i, crc; //we can join varialbes here and use one of them
+  uint16_t crc;
   uint8_t *txTmp, *srcTmp;
 
   txTmp = txBuff;
@@ -818,7 +818,7 @@ uint8_t* aduSerialize(mb_adu_t *adu) {
   *txTmp = adu->fc;
   txTmp += sizeof(adu->fc);
 
-  for (i = adu->dataLen; i--;) {
+  for (crc = adu->dataLen; crc--;) { //here was i variable.
     *txTmp++ = *srcTmp++;
   }
 

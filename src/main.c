@@ -90,7 +90,7 @@ main(void) {
   m_device.inputRegistersMap.start_addr = 0;
   m_device.inputRegistersMap.real_addr = inputRegisters;
   m_device.inputRegistersMap.end_addr = sizeof(inputRegisters);
-  m_device.tp_send = usart0SendArr;
+  m_device.fpSendData = usart0SendArr;
 
   mb_init(&m_device);
   adxlReset();

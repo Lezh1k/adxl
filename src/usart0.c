@@ -62,7 +62,7 @@ static volatile uint8_t halfSymbolIdleCount = 0;
 
 void MRT_IRQHandler(void) {
   MRT_STAT0 |= (1 << 0); //clear interrupt request
-  if (halfSymbolIdleCount++ < 35) return; //todo check this interval. should be 7-8 . works with 35. why?
+  if (halfSymbolIdleCount++ < 56) return; //at least 56 .
   disableRxReady();
   stopMrtTimer0Imm();    
   SetSoftwareInt(SINT_USART0_MB_TSX);
@@ -70,7 +70,7 @@ void MRT_IRQHandler(void) {
 //////////////////////////////////////////////////////////////////////////
 
 void usart0MbTsxHandle() {  
-  mb_handle_request(recvBuff, recvIx); //todo check result
+  mbHandleRequest(recvBuff, recvIx); //todo check result
   recvIx = 0;
   halfSymbolIdleCount = 0;
   enableRxReady();
@@ -167,6 +167,7 @@ void usart0SendArr(uint8_t *data, uint16_t len) {
   disableRxReady();
   while(len--)
     usart0SendSync(*(data++));
+  for(len = 56; --len;) asm("nop");
   enableRxReady();
 }
 //////////////////////////////////////////////////////////////////////////

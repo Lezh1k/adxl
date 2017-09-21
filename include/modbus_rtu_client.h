@@ -73,10 +73,10 @@ typedef struct mb_client_device {
   mb_dev_bit_mapping_t coilsMap;                    // read/write bits
   mb_dev_registers_mapping_t inputRegistersMap;    // read registers
   mb_dev_registers_mapping_t holdingRegistersMap;  // read/write registers
-  void (*tp_send)(uint8_t* data, uint16_t len);      // transport send
+  void (*fpSendData)(uint8_t* data, uint16_t len);      // transport send
 } mb_client_device_t;
 
 void mb_init(mb_client_device_t* dev);
-uint16_t mb_handle_request(uint8_t* data, uint16_t data_len);
+uint16_t mbHandleRequest(uint8_t* data, uint16_t data_len);
 
 #endif  // MODBUS_RTU_CLIENT_H
