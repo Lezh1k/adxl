@@ -56,16 +56,17 @@ void UART0_IRQHandler(void) {
 
 #define RECV_BUFF_LEN 257
 static uint8_t  recvBuff[RECV_BUFF_LEN] = {0};
+static uint8_t  mbRecvBuff[RECV_BUFF_LEN] = {0};
 static volatile uint16_t recvIx = 0;
 static volatile uint16_t intRecvIx = 0;
 static volatile uint8_t halfSymbolIdleCount = 0;
 
 void MRT_IRQHandler(void) {
+
   MRT_STAT0 |= (1 << 0); //clear interrupt request
-  intRecvIx = recvIx;
   if (halfSymbolIdleCount++ < 35) return; //todo check this interval. should be 7-8 . works with 35. why?
   disableRxReady();
-  stopMrtTimer0Imm();
+  stopMrtTimer0Imm();  
   recvIx = 0;
   SetSoftwareInt(SINT_USART0_MB_TSX);
 }
@@ -82,6 +83,7 @@ void usart0MbTsxHandle() {
 void rxReady() {
   stopMrtTimer0Imm();  
   recvBuff[recvIx++] = USART0_RXDAT;
+  intRecvIx = recvIx;
   halfSymbolIdleCount = 0;
   startMrtTimer0(HALF_BOD_TICK_COUNT);  
   if (recvIx >= RECV_BUFF_LEN) {

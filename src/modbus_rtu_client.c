@@ -73,7 +73,7 @@ typedef struct mb_request_handler {
   uint16_t  (*pfExecuteFunction)(mb_adu_t *adu);
 } mb_request_handler_t;
 
-static mb_adu_t *aduFromStream(uint8_t *data, uint16_t len);
+static mb_adu_t aduFromStream(uint8_t *data, uint16_t len);
 static uint8_t *aduSerialize(mb_adu_t *adu); //create on heap
 static uint16_t mbSendResponse(mb_adu_t *adu);
 static void mbSendExcResponse(mbec_exception_code_t exc_code, mb_adu_t *adu);
@@ -204,8 +204,7 @@ void handleBroadcastMessage(uint8_t *data, uint16_t len) {
 static volatile uint8_t is_busy = 0;
 uint16_t mb_handle_request(uint8_t *data, uint16_t data_len) {
   uint16_t res = 0x00; //success
-  mb_adu_t *adu_req = NULL;
-  uint8_t *adu_old_data = NULL;
+  mb_adu_t adu_req;
   mb_request_handler_t *rh = NULL;
   uint16_t expected_crc, real_crc;
 
@@ -231,53 +230,46 @@ uint16_t mb_handle_request(uint8_t *data, uint16_t data_len) {
 
     ++m_counters.busMsg;
 
-    adu_req = aduFromStream(data, data_len);
-    adu_old_data = adu_req->data;
-    rh = mbValidateFunctionCode(adu_req);
+    adu_req = aduFromStream(data, data_len);    
+    rh = mbValidateFunctionCode(&adu_req);
 
-    if (adu_req->addr == 0) {
+    if (adu_req.addr == 0) {
       handleBroadcastMessage(data, data_len);
       ++m_counters.slaveMsg;
       ++m_counters.slaveNoResp;
       break;
     }
 
-    if (adu_req->addr != m_device->address)
+    if (adu_req.addr != m_device->address)
       break; //silently.
 
     m_counters.slaveMsg++;
     if (!rh->fcValidationResult) {
       ++m_counters.excErr;
-      mbSendExcResponse(res = mbec_illegal_function, adu_req);
+      mbSendExcResponse(res = mbec_illegal_function, &adu_req);
       break;
     }
 
-    if (!rh->pfCheckAddress(adu_req)) {
+    if (!rh->pfCheckAddress(&adu_req)) {
       ++m_counters.excErr;
-      mbSendExcResponse(res = mbec_illegal_data_address, adu_req);
+      mbSendExcResponse(res = mbec_illegal_data_address, &adu_req);
       break;
     }
 
-    if (!rh->pfValidateDataValue(adu_req)) {
+    if (!rh->pfValidateDataValue(&adu_req)) {
       ++m_counters.excErr;
-      mbSendExcResponse(res = mbec_illegal_data_value, adu_req);
+      mbSendExcResponse(res = mbec_illegal_data_value, &adu_req);
       break;
     }
 
-    if ((res = rh->pfExecuteFunction(adu_req))) {
+    if ((res = rh->pfExecuteFunction(&adu_req))) {
       ++m_counters.excErr;
-      mbSendExcResponse(res, adu_req);
+      mbSendExcResponse(res, &adu_req);
       break;
     }
 
-    res = mbSendResponse(adu_req);
-  } while(0);
-
-  if (adu_req) {
-    if (adu_req->data && adu_req->data != adu_old_data)
-      hm_free((memory_t)adu_req->data); //allocated in pf_execute_functions
-    hm_free((memory_t)adu_req); //allocated in adu_from_stream
-  }
+    res = mbSendResponse(&adu_req);
+  } while(0);  
 
   is_busy = 0;
   return res;
@@ -907,20 +899,18 @@ void mbSendExcResponse(mbec_exception_code_t exc_code, mb_adu_t* adu) {
 }
 ////////////////////////////////////////////////////////////////////////////
 
-mb_adu_t* aduFromStream(uint8_t *data, uint16_t len) {
-  mb_adu_t* result = (mb_adu_t*) hm_malloc(sizeof(mb_adu_t));
-  if (!result) return result;
-
-  result->addr = *(uint8_t*)data;
-  data += sizeof(result->addr);
-  result->fc = *data;
-  data += sizeof(result->fc);
-  result->data = data;
-  result->dataLen = len - (sizeof(mb_adu_t) -
-                            sizeof(result->data) -
-                            sizeof(result->dataLen));
-  data += result->dataLen;
-  result->crc = U16_LSBFromStream(data);
+mb_adu_t aduFromStream(uint8_t *data, uint16_t len) {
+  mb_adu_t result;
+  result.addr = *(uint8_t*)data;
+  data += sizeof(result.addr);
+  result.fc = *data;
+  data += sizeof(result.fc);
+  result.data = data;
+  result.dataLen = len - (sizeof(mb_adu_t) -
+                          sizeof(result.data) -
+                          sizeof(result.dataLen));
+  data += result.dataLen;
+  result.crc = U16_LSBFromStream(data);
   return result;
 }
 ////////////////////////////////////////////////////////////////////////////

@@ -166,9 +166,7 @@ main(void) {
     if (SoftwareInterruptsFlag & SINT_USART0_MB_TSX) {
       ClrSoftwareInt(SINT_USART0_MB_TSX);
       usart0MbTsxHandle();
-    }
-
-    //    adxlSetRange(adxlr_4g);
+    }    
   }
   return 0;
 }

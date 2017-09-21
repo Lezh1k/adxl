@@ -3,11 +3,11 @@
 #include <stdint.h>
 
 static inline uint16_t U16_MSBFromStream(uint8_t* data) {
-  return (data[0] << 8) | data[1];
+  return ((uint16_t)data[0] << 8) | data[1];
 }
 
 static inline uint16_t U16_LSBFromStream(uint8_t* data) {
-  return data[0] | (data[1] << 8);
+  return ((uint16_t)data[0]) | ((uint16_t)(data[1] << 8));
 }
 
 static inline void U16_MSB2Stream(uint16_t val, uint8_t* data) {
