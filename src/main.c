@@ -50,31 +50,33 @@ void SysTick_Handler     (void) {  while(1) ; }
 #define MAGIC0 0x0b3d
 
 typedef enum adxl_holding_settings{
-  s_range = 0,
-  s_odr,
+  s_xVal = 0,
+  s_yVal,
+  s_zVal,
+  s_adxlRange,
+  s_adxlOdr,
+  s_adxlBW,
   s_win_size,
-  s_count
+  s_magic0,
+  s_adxl_holding_settings_size
 }adxl_holding_settings_t;
 
-#define DEFAULT_WINDOW_SIZE 2
+#define DEFAULT_WINDOW_SIZE 4
 #define MAX_WINDOW_SIZE 64
 #define RTU_MAX_SIZE 256
 
 static uint8_t coilsBuff[24] = {0};
 static uint8_t inputDiscreteBuff[24] = {0};
-static uint16_t inputRegisters[3] = {0}; //X, Y, Z
-static uint16_t holdingRegisters[s_count] = {adxlr_2g, odr_100, DEFAULT_WINDOW_SIZE, 0xff};
+static uint16_t inputRegisters[3] = {0};
+static uint16_t holdingRegisters[s_adxl_holding_settings_size] = {0};
 static mb_client_device_t m_device;
 
 int
-main(void) {  
-  enum {irX = 0, irY, irZ};  
-  register uint8_t currentAdxlRange = holdingRegisters[s_range];
-  register uint8_t currentOdr = holdingRegisters[s_odr];
+main(void) {    
 
-  int32_t currentWinSize = holdingRegisters[s_win_size];
+  int32_t currentWinSize = 1;
   int32_t xSum, ySum, zSum;
-  int32_t xWS, yWS, zWS;
+  uint32_t xWS, yWS, zWS;
 
   m_device.address = 2;
   m_device.coilsMap.startAddr = 0;
@@ -91,14 +93,18 @@ main(void) {
   m_device.inputRegistersMap.end_addr = sizeof(inputRegisters);
   m_device.tp_send = usart0SendArr;
 
-  hm_init();
+  hm_init(); //init heap for modbus.
+  mb_init(&m_device);
   adxlReset();
-  usart0Init();
 
+  holdingRegisters[s_adxlRange] = adxlRange();
+  holdingRegisters[s_adxlOdr] = adxlOdr();
+  holdingRegisters[s_adxlBW] = adxlBW();
+  holdingRegisters[s_win_size] = DEFAULT_WINDOW_SIZE;
+
+  usart0Init();
   xWS = yWS = zWS = currentWinSize;
   xSum = ySum = zSum = 0;
-
-  mb_init(&m_device);
 
   while (1) {
 
@@ -109,14 +115,16 @@ main(void) {
       *((volatile uint32_t*)0xE000ED0C) = 0x05fa0004;
     }
 
-    if (currentAdxlRange != holdingRegisters[s_range]) {
-      adxlSetRange(holdingRegisters[s_range]);
-      currentAdxlRange = holdingRegisters[s_range];
+    if (adxlRange() != holdingRegisters[s_adxlRange]) {
+      adxlSetRange(holdingRegisters[s_adxlRange]);
     }
 
-    if (currentOdr != holdingRegisters[s_odr]) {
-      adxlSetOdr(holdingRegisters[s_odr]);
-      currentOdr = holdingRegisters[s_odr];
+    if (adxlOdr() != holdingRegisters[s_adxlOdr]) {
+      adxlSetOdr(holdingRegisters[s_adxlOdr]);
+    }
+
+    if (adxlBW() != holdingRegisters[s_adxlBW]) {
+      adxlSetBandwidth(holdingRegisters[s_adxlBW]);
     }
 
     if (currentWinSize != holdingRegisters[s_win_size]) {
@@ -125,25 +133,31 @@ main(void) {
       currentWinSize = holdingRegisters[s_win_size];
     }
 
-    if (SoftwareInterruptsFlag & SINT_ADXL_XYZ_UPDATED) {
-      ClrSoftwareInt(SINT_ADXL_XYZ_UPDATED);
-
+    if (SoftwareInterruptsFlag & SINT_ADXL_X_UPDATED) {
+      ClrSoftwareInt(SINT_ADXL_X_UPDATED);
       xSum += adxl_X();
-      if (--xWS <= 0) { //need to save this value in input register
-        inputRegisters[irX] = LPC_DIV_API->sidiv(xSum, currentWinSize);
+      if (--xWS == 0) { //need to save this value in input register
+        holdingRegisters[s_xVal] = LPC_DIV_API->sidiv(xSum, currentWinSize);
         xWS = currentWinSize;
         xSum = 0;
       }
+    }
 
+    if (SoftwareInterruptsFlag & SINT_ADXL_Y_UPDATED) {
+      ClrSoftwareInt(SINT_ADXL_Y_UPDATED);
       ySum += adxl_Y();
-      if (--yWS <= 0) { //need to save this value in input register
-        inputRegisters[irY] = LPC_DIV_API->sidiv(ySum, currentWinSize);
+      if (--yWS == 0) { //need to save this value in input register
+        holdingRegisters[s_yVal] = LPC_DIV_API->sidiv(ySum, currentWinSize);
         yWS = currentWinSize;
         ySum = 0;
       }
+    }
+
+    if (SoftwareInterruptsFlag & SINT_ADXL_Z_UPDATED) {
+      ClrSoftwareInt(SINT_ADXL_Z_UPDATED);
       zSum += adxl_Z();
-      if (--zWS <= 0) { //need to save this value in input register
-        inputRegisters[irZ] = LPC_DIV_API->sidiv(zSum, currentWinSize);
+      if (--zWS == 0) { //need to save this value in input register
+        holdingRegisters[s_zVal] = LPC_DIV_API->sidiv(zSum, currentWinSize);
         zWS = currentWinSize;
         zSum = 0;
       }
@@ -153,6 +167,8 @@ main(void) {
       ClrSoftwareInt(SINT_USART0_MB_TSX);
       usart0MbTsxHandle();
     }
+
+    //    adxlSetRange(adxlr_4g);
   }
   return 0;
 }

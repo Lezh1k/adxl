@@ -18,7 +18,9 @@ uint16_t crc16(uint8_t *data, uint8_t len);
 volatile uint32_t SoftwareInterruptsFlag;
 
 #define SINT_USART0_MB_TSX (1 << 0)
-#define SINT_ADXL_XYZ_UPDATED (1 << 1)
+#define SINT_ADXL_X_UPDATED (1 << 1)
+#define SINT_ADXL_Y_UPDATED (1 << 2)
+#define SINT_ADXL_Z_UPDATED (1 << 3)
 
 #define SetSoftwareInt(x) ((SoftwareInterruptsFlag |= x))
 #define ClrSoftwareInt(x) ((SoftwareInterruptsFlag &= ~x))

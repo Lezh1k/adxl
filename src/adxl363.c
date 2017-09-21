@@ -76,64 +76,100 @@ typedef enum adxl_cmd {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-static uint16_t readRegisterSync(uint8_t reg);
-static void writeRegisterSync(uint8_t reg, uint8_t val);
-static adxl_range_t m_currentRange;
+static adxl_range_t m_currentRange = adxlr_2g;
+static adxl_odr_t m_currentOdr = adxl_odr_100;
+static adxl_half_bandwidth_t m_currentBW = adxl_bw_1;
 
 #define RXRDY (1 << 0)
 #define TXRDY (1 << 1)
 static inline void spi0RxEnable() { SPI0_INTENSET |= RXRDY;}
-static inline void spi0RxDisable() { SPI0_INTENCLR |= RXRDY;}
 static inline void spi0TxReadyEnable() { SPI0_INTENSET |= TXRDY;}
+static inline void spi0RxDisable() { SPI0_INTENCLR |= RXRDY;}
 static inline void spi0TxReadyDisable() { SPI0_INTENSET |= TXRDY;}
+
+static inline uint8_t filterCtlFromCurrentSettings() {
+  return (m_currentRange << 6) | (m_currentBW << 4) | m_currentOdr;
+}
+
+static void writeRegisterSync(uint8_t reg, uint8_t val);
+static uint8_t m_xyzCmdIx = 0;
+static uint8_t m_changeFilterCtl = 0;
 
 static uint8_t m_xyzRxBuffer[6] = {0}; //x, y, z
 static uint8_t m_xyzRxCurIx = 0;
-static uint8_t m_xyzCmdBuff[6] =
-                            {AR_XDATA_H, AR_XDATA_L,
-                             AR_YDATA_H, AR_YDATA_L,
-                             AR_ZDATA_H, AR_ZDATA_L};
-static uint8_t m_xyzCmdIx = 0;
-static uint8_t m_needWriteSettingsCommand = 0;
+
+static const uint8_t m_xyzCmdBuff[6] = {
+  AR_XDATA_H, AR_XDATA_L,
+  AR_YDATA_H, AR_YDATA_L,
+  AR_ZDATA_H, AR_ZDATA_L
+};
 
 //enabled only for x, y, z data.
 void SPI0_IRQHandler(void) {
-  static volatile uint8_t xyzTxCount = 0;
+  static uint8_t xyzTxCount = 0;
+  static uint8_t changeSettingFlagCount = 0;
   uint32_t stat = SPI0_INSTAT;
+  spi0TxReadyDisable(); //remove after tests
 
   if (stat & RXRDY) {
     m_xyzRxBuffer[m_xyzRxCurIx] = SPI0_RXDAT;
-    if (++m_xyzRxCurIx == 6){
-      SetSoftwareInt(SINT_ADXL_XYZ_UPDATED);
-      m_xyzRxCurIx = 0;
+    switch (m_xyzRxCurIx) {
+      case 1:
+        SetSoftwareInt(SINT_ADXL_X_UPDATED);
+        break;
+      case 3:
+        SetSoftwareInt(SINT_ADXL_Y_UPDATED);
+        break;
+      case 5:
+        SetSoftwareInt(SINT_ADXL_Z_UPDATED);
+        break;
     }
+
+    if (++m_xyzRxCurIx >= 6)
+      m_xyzRxCurIx = 0;
   }
 
-  do {
-    if (~stat & TXRDY)
-      break;
-
-    if (!xyzTxCount && m_needWriteSettingsCommand) {
-
-      break;
-    }
+  if (stat & TXRDY) {
+    //filterCTL processing. stop process
+    if (!xyzTxCount) {
+      if (m_changeFilterCtl) {
+        if (changeSettingFlagCount) { //end of filter ctl transaction
+          SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(7) |      //1 byte
+                          SPI_TXDATCTL_EOT |          //end of transaction.
+                          SPI_TXDATCTL_SSEL_N(0xe) |  //SSEL0 asserted
+                          SPI_TXDATCTL_RXIGNORE | filterCtlFromCurrentSettings();
+          changeSettingFlagCount = 0;
+          if (--m_changeFilterCtl < 0) m_changeFilterCtl = 0; //not ok
+        } else { //begin of filter ctl transaction
+          SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(15) |     //2 bytes
+                          SPI_TXDATCTL_SSEL_N(0xe) |  //SSEL0 asserted
+                          SPI_TXDATCTL_RXIGNORE |
+                          (uint16_t)((adxl_write_r << 8) | AR_FILTER_CTL);
+          changeSettingFlagCount = 1;
+        } //changeSettingFlagCount
+      } //m_changeFilterCtl
+    } //!xyzTxCount
 
     //xyz processing
-    if (xyzTxCount) { //end of values transaction
-      SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(7) |      //1 byte
-                      SPI_TXDATCTL_EOT |          //end of transaction.
-                      SPI_TXDATCTL_SSEL_N(0xe) |  //SSEL0 asserted
-                      0x00;
-      xyzTxCount = 0;
-    } else { //begin of values transaction
-      SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(15) |     //2 bytes
-                      SPI_TXDATCTL_SSEL_N(0xe) |  //SSEL0 asserted
-                      SPI_TXDATCTL_RXIGNORE |
-                      (uint16_t)((adxl_read_r << 8) | m_xyzCmdBuff[m_xyzCmdIx++]);
-      if (m_xyzCmdIx >= 6) m_xyzCmdIx = 0;
-      xyzTxCount = 1;
+    if (!changeSettingFlagCount) {
+      if (xyzTxCount) { //end of xyz transaction
+        SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(7) |      //1 byte
+                        SPI_TXDATCTL_EOT |          //end of transaction.
+                        SPI_TXDATCTL_SSEL_N(0xe) |  //SSEL0 asserted
+                        0x00;
+        xyzTxCount = 0;
+      } else { //begin of values transaction
+        SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(15) |     //2 bytes
+                        SPI_TXDATCTL_SSEL_N(0xe) |  //SSEL0 asserted
+                        SPI_TXDATCTL_RXIGNORE |
+                        (uint16_t)((adxl_read_r << 8) | m_xyzCmdBuff[m_xyzCmdIx++]);
+        if (m_xyzCmdIx >= 6) m_xyzCmdIx = 0;
+        xyzTxCount = 1;
+      }
     }
-  } while (0);
+  }//if (stat & TXRDY)
+
+  spi0TxReadyEnable(); //remove after tests
 }
 //////////////////////////////////////////////////////////////////////////
 
@@ -146,7 +182,7 @@ static inline void adxlConfigPins() {
 //////////////////////////////////////////////////////////////////////////
 
 void adxlReset(void) {
-  static uint8_t init_data[] = {
+  static const uint8_t init_data[] = {
     0xfa, 0x00, //set activity threshold to 250 mg 0x20, 0x21 LOW then HIGH half
     0x00,       //set activity time to 0  0x22
     0x96, 0x00, //set inactivity threshold to 150 mg 0x23, 0x24 LOW then HIGH half
@@ -154,25 +190,31 @@ void adxlReset(void) {
     0x00,       //disable activity/inactivity interrupts 0x27
     0x00, 0x00, //don't use FIFO, 0x28, 0x29
     0x00, 0x00, //no interrupts? map registers 0x2a, 0x2b
-    0x13, //+-2g, HALF_BW, no EXT_SAMPLE, 100Hz, 0x2c
-    0x12  //adc disabled, no ext clock, low noise, no wake-up,
+    0x13,       //+-2g, HALF_BW, no EXT_SAMPLE, 100Hz, 0x2c
+    0x12        //adc disabled, no ext clock, low noise, no wake-up,
     //no autosleep, measurement mode 0x2d
   };
   register int32_t i;
+  //after this we are resetting SPI0 at all.
   m_currentRange = adxlr_2g;
+  m_currentOdr = adxl_odr_100;
+  m_currentBW = adxl_bw_1;
+
   adxlConfigPins();
   SYSCON_PRESETCTRL &= ~(1 << 0); //reset SPI0
   SYSCON_SYSAHBCLKCTRL |= (1 << 11); //enable clock for SPI0
   SYSCON_PRESETCTRL |= (1 << 0); //take SPI0 out of reset
   SPI0_DLY = 0x00001009; //1 tick post and pre delay. 1 tick transaction delay.
-  SPI0_DIV = 0x0018; //divider is 24. result is 0.5 MHz
+
+  // The recommended SPI clock speeds are 1 MHz to 5 MHz, with 12 pF maximum loading
+  SPI0_DIV = F_CPU / 500000; //we want to use 0.5MHz.
   SPI0_CFG = SPI_CFG_ENABLE | SPI_CFG_MASTER ; //enable SPI0 master mode, CPHA = CPOL = 0
 
   writeRegisterSync(AR_SOFT_RESET, 0x52);
-  for (i = 100; --i;); //wait
+  for (i = 100; --i;); //wait little bit
   for (i = 0x20; i <= 0x2d; ++i)
     writeRegisterSync(i, init_data[i-0x20]);
-  for (i = 100; --i;); //wait
+  for (i = 100; --i;); //wait little bit
 
   m_xyzCmdIx = m_xyzRxCurIx = 0;
   NVIC_ISER0 |= (1 << 0); //enable SPI0 interrupt.
@@ -184,29 +226,7 @@ void adxlReset(void) {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-//warning! use external disabling of interrups before call
-uint16_t readRegisterSync(uint8_t reg) {
-  uint32_t rx_data;
-  while(~SPI0_STAT & SPI_STAT_TXRDY) ;
-  SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(15) |     //2 bytes
-                  SPI_TXDATCTL_SSEL_N(0xe) |  //SSEL0 asserted
-                  SPI_TXDATCTL_RXIGNORE |
-                  (uint16_t)((adxl_read_r << 8) | reg);
-
-  while(~SPI0_STAT & SPI_STAT_TXRDY) ;
-
-  SPI0_TXDATCTL = SPI_TXDATCTL_FLEN(7) |      //1 byte
-                  SPI_TXDATCTL_EOT |          //end of transaction.
-                  SPI_TXDATCTL_SSEL_N(0xe) |  //SSEL0 asserted
-                  0x00;
-  while(~SPI0_STAT & SPI_STAT_RXRDY) ;
-  rx_data = SPI0_RXDAT;
-  while(~SPI0_STAT & SPI_STAT_MSTIDLE) ;
-  return (uint16_t)(rx_data & 0x0000ffff);
-}
-//////////////////////////////////////////////////////////////////////////
-
-//warning! use external disabling of interrups before call
+//we are using it only in reset function. so we don't need to disable interrupts.
 void writeRegisterSync(uint8_t reg,
                        uint8_t val) {
   while(~SPI0_STAT & SPI_STAT_TXRDY) ;
@@ -227,79 +247,50 @@ void writeRegisterSync(uint8_t reg,
 //////////////////////////////////////////////////////////////////////////
 
 void adxlSetRange(adxl_range_t range) {
-  uint8_t reg;
-  spi0RxDisable();
-  spi0TxReadyDisable();
-  reg = (uint8_t) readRegisterSync(AR_FILTER_CTL);
-  reg &= 0x3f;
-  reg |= (range << 6);
-  writeRegisterSync(AR_FILTER_CTL, reg);
   m_currentRange = range;
-
-  for (reg = 0; reg < 6; ++reg)
-    m_xyzRxBuffer[reg] = 0;
-  m_xyzCmdIx = m_xyzRxCurIx = 0;
-
-  spi0RxEnable();
-  spi0TxReadyEnable();
+  ++m_changeFilterCtl;
 }
 //////////////////////////////////////////////////////////////////////////
 
 void adxlSetOdr(adxl_odr_t odr) {
-  uint8_t reg;
+  m_currentOdr = odr;
+  ++m_changeFilterCtl;
+}
+//////////////////////////////////////////////////////////////////////////
 
-  spi0RxDisable();
-  spi0TxReadyDisable();
-
-  reg = (uint8_t) readRegisterSync(AR_FILTER_CTL);
-  reg &= 0xf8;
-  reg |= odr;
-  writeRegisterSync(AR_FILTER_CTL, reg);
-
-  for (reg = 0; reg < 6; ++reg)
-    m_xyzRxBuffer[reg] = 0;
-  m_xyzCmdIx = m_xyzRxCurIx = 0;
-
-  spi0RxEnable();
-  spi0TxReadyEnable();
+void adxlSetBandwidth(adxl_half_bandwidth_t bw) {
+  m_currentBW = bw;
+  ++m_changeFilterCtl;
 }
 //////////////////////////////////////////////////////////////////////////
 
 int16_t adxl_X(void) {
-  int16_t res = (uint16_t)m_xyzRxBuffer[0] << 8;
-  res |= m_xyzRxBuffer[1];
-  return res;
+  return ((int16_t)m_xyzRxBuffer[0] << 8) | m_xyzRxBuffer[1];
 }
 //////////////////////////////////////////////////////////////////////////
 
 int16_t adxl_Y(void) {
-  int16_t res = (uint16_t)m_xyzRxBuffer[2] << 8;
-  res |= m_xyzRxBuffer[3];
-  return res;
+  return ((int16_t)m_xyzRxBuffer[2] << 8) | m_xyzRxBuffer[3];
 }
 //////////////////////////////////////////////////////////////////////////
 
 int16_t adxl_Z(void) {
-  int16_t res = (uint16_t)m_xyzRxBuffer[4] << 8;
-  res |= m_xyzRxBuffer[5];
-  return res;
+  return ((int16_t)m_xyzRxBuffer[4] << 8) | m_xyzRxBuffer[5];
 }
 //////////////////////////////////////////////////////////////////////////
 
-//uint32_t adxlDevSign() {
-//  uint32_t res = 0x00000000;
-//  res |= readRegisterSync(AR_DEVID_AD) << 16;
-//  res |= readRegisterSync(AR_DEVID_MST) << 8;
-//  res |= readRegisterSync(AR_DEVID);
-//  return res;
-//}
-////////////////////////////////////////////////////////////////////////////
+adxl_range_t adxlRange() {
+  return m_currentRange;
+}
+//////////////////////////////////////////////////////////////////////////
 
-//uint8_t adxlCheckSign() {
-//  return adxlDevSign() == ADXL363_SIGNATURE;
-//}
-////////////////////////////////////////////////////////////////////////////
+adxl_odr_t adxlOdr() {
+  return m_currentOdr;
+}
+//////////////////////////////////////////////////////////////////////////
 
-//adxl_range_t adxlCurrentRange() {
-//  return m_currentRange;
-//}
+adxl_half_bandwidth_t adxlBW() {
+  return m_currentBW;
+}
+//////////////////////////////////////////////////////////////////////////
+
