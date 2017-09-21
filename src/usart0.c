@@ -55,40 +55,36 @@ void UART0_IRQHandler(void) {
 //////////////////////////////////////////////////////////////////////////
 
 #define RECV_BUFF_LEN 257
-static uint8_t  recvBuff[RECV_BUFF_LEN] = {0};
-static uint8_t  mbRecvBuff[RECV_BUFF_LEN] = {0};
-static volatile uint16_t recvIx = 0;
-static volatile uint16_t intRecvIx = 0;
+static uint8_t recvBuff[RECV_BUFF_LEN] = {0};
+static volatile uint16_t recvIx = 0; //нехорошо юзать так эту переменную, но тут канает.
+static volatile uint16_t recvIxBeforeMbHanling = 0; //
 static volatile uint8_t halfSymbolIdleCount = 0;
 
 void MRT_IRQHandler(void) {
-
   MRT_STAT0 |= (1 << 0); //clear interrupt request
   if (halfSymbolIdleCount++ < 35) return; //todo check this interval. should be 7-8 . works with 35. why?
   disableRxReady();
-  stopMrtTimer0Imm();  
-  recvIx = 0;
+  stopMrtTimer0Imm();    
   SetSoftwareInt(SINT_USART0_MB_TSX);
 }
 //////////////////////////////////////////////////////////////////////////
 
 void usart0MbTsxHandle() {  
-  mb_handle_request(recvBuff, intRecvIx); //todo check result
+  mb_handle_request(recvBuff, recvIx); //todo check result
+  recvIx = 0;
   halfSymbolIdleCount = 0;
-  intRecvIx = 0;
   enableRxReady();
 }
 ////////////////////////////////////////////////////////////////////////////
 
 void rxReady() {
   stopMrtTimer0Imm();  
-  recvBuff[recvIx++] = USART0_RXDAT;
-  intRecvIx = recvIx;
+  recvBuff[recvIx++] = USART0_RXDAT;  
   halfSymbolIdleCount = 0;
   startMrtTimer0(HALF_BOD_TICK_COUNT);  
   if (recvIx >= RECV_BUFF_LEN) {
-    recvIx = 0;
     stopMrtTimer0Imm();
+    recvIx = 0;
     return;
   }
 }
