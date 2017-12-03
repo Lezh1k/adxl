@@ -150,7 +150,7 @@ main(void) {
         ySum = 0;
       }
     }
-
+ 
     if (SoftwareInterruptsFlag & SINT_ADXL_Z_UPDATED) {
       ClrSoftwareInt(SINT_ADXL_Z_UPDATED);
       zSum += adxl_Z();
