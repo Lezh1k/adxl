@@ -67,7 +67,7 @@ typedef enum adxl_register {
 } adxl_register_t;
 //////////////////////////////////////////////////////////////////////////
 
-typedef enum adxl_cmd {
+typedef enum AdxlCmd {
   adxl_write_r = 0x0a,
   adxl_read_r = 0x0b,
   adxl_read_fifo = 0x0d
